@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>넷플릭스 영어 공부 자막 뷰어</title>
+    <title>넷플릭스 스마트 자막 학습기</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -59,6 +59,7 @@
             font-size: 1.2rem;
             color: #495057;
         }
+        /* 문장 표시 영역 */
         #ko-text, #en-text {
             font-size: 1.35em;
             font-weight: 500;
@@ -66,11 +67,12 @@
             padding: 15px;
             border-radius: 8px;
             line-height: 1.5;
-            min-height: 40px;
+            min-height: 45px;
             display: flex;
             align-items: center;
             justify-content: center;
             word-break: keep-all;
+            transition: all 0.2s ease;
         }
         #ko-text {
             background-color: #f1f3f5;
@@ -82,6 +84,28 @@
             color: #0056b3;
             border-left: 5px solid #007bff;
         }
+        /* ⭐️ 블라인드(숨김) 처리 CSS */
+        .hidden-text {
+            background-color: #dee2e6 !important;
+            color: transparent !important;
+            cursor: pointer;
+            position: relative;
+            border-color: #adb5bd !important;
+        }
+        .hidden-text::after {
+            content: '👀 클릭하여 문장 보기 및 듣기';
+            color: #495057;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        .hidden-text:hover {
+            background-color: #ced4da !important;
+        }
+
         #controls {
             display: flex;
             justify-content: center;
@@ -91,7 +115,7 @@
             margin-top: 15px;
         }
         #controls button {
-            padding: 10px 20px;
+            padding: 10px 18px;
             border-radius: 6px;
             border: none;
             background-color: #007bff;
@@ -105,10 +129,10 @@
             background-color: #0056b3;
         }
         #controls #stop-btn {
-            background-color: #dc3545;
+            background-color: #6c757d;
         }
         #controls #stop-btn:hover {
-            background-color: #bd2130;
+            background-color: #5a6268;
         }
         .checkbox-wrapper {
             display: flex;
@@ -117,22 +141,23 @@
             color: #495057;
             cursor: pointer;
             user-select: none;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
         }
         .checkbox-wrapper input {
             margin-right: 6px;
             transform: scale(1.1);
         }
-        #subtitle-container h2 {
-            margin-top: 0;
-            font-size: 1.2rem;
-            color: #495057;
-        }
+        
         #subtitle-list {
             height: 450px;
             overflow-y: auto;
             border: 1px solid #dee2e6;
             background: #ffffff;
             border-radius: 8px;
+            scroll-behavior: smooth;
         }
         .subtitle-item {
             padding: 12px 15px;
@@ -160,11 +185,7 @@
             line-height: 1.4;
             word-break: keep-all;
         }
-        .subtitle-ko {
-            color: #495057;
-        }
         .subtitle-en {
-            color: #212529;
             font-weight: 500;
         }
         .info-msg {
@@ -177,9 +198,8 @@
 </head>
 <body>
 
-    <h1>🎬 넷플릭스 영어 공부 자막 뷰어</h1>
+    <h1>🎬 넷플릭스 스마트 자막 학습기</h1>
 
-    <!-- 1. 파일 업로드 영역 -->
     <div id="file-loaders">
         <div class="file-input-wrapper">
             <label for="en-file">🔤 영어 자막 파일 (.srt / .txt)</label>
@@ -191,27 +211,25 @@
         </div>
     </div>
 
-    <!-- 2. 선택 문장 및 오디오 컨트롤 영역 -->
     <div id="selected-subtitle">
-        <h2>Selected Sentence (선택된 문장)</h2>
-        <div id="ko-text">자막 파일을 불러오신 후 학습할 문장을 선택해 주세요.</div>
+        <h2>학습 모드 화면</h2>
+        <div id="ko-text">자막을 불러오신 후 아래 재생 버튼을 누르거나 목록을 클릭하세요.</div>
         <div id="en-text">The English subtitle will be displayed here.</div>
         
         <div id="controls">
-             <button id="ko-speak-btn">🔊 한국어 읽기</button>
-             <button id="en-speak-btn">🔊 영어 읽기</button>
+             <button id="ko-speak-btn">▶️ 한국어 재생 / 다음</button>
+             <button id="en-speak-btn">▶️ 영어 재생 / 다음</button>
              <label class="checkbox-wrapper">
-                 <input type="checkbox" id="repeat-checkbox"> 한 줄 반복 듣기
+                 <input type="checkbox" id="repeat-checkbox"> 🔁 한 줄 반복
              </label>
-             <button id="stop-btn">⏹ 중지</button>
+             <button id="stop-btn">⏹ 정지</button>
         </div>
     </div>
     
-    <!-- 3. 자막 리스트 출력 영역 -->
     <div id="subtitle-container">
-        <h2>Subtitle List (자막 목록)</h2>
+        <h2>전체 자막 목록</h2>
         <div id="subtitle-list">
-            <p class="info-msg">가이드: 위의 파일 선택 버튼을 눌러 소장하신 영어 자막과 한국어 자막을 올려주세요.<br>시간대 매칭 시스템이 작동하여 싱크가 정확하게 연동됩니다.</p>
+            <p class="info-msg">가이드: 영어 자막과 한국어 자막 파일을 모두 올려주세요.<br>시간이 일치하는 자막끼리 짝이 맞춰져 목록이 생성됩니다.</p>
         </div>
     </div>
 
@@ -229,28 +247,24 @@
         let mergedSubtitles = [];
         const synth = window.speechSynthesis;
         let currentUtterance = null;
-        let isRepeating = false;
-        let currentLang = 'en-US';
-        let currentText = '';
+        
+        // 상태 변수
+        let currentIndex = -1;
+        let isStudying = false; // 현재 문장 재생을 시작했는지 여부
 
-        // "HH:MM:SS,mmm" 포맷의 시간을 밀리초(ms) 단위의 정수로 변환
+        // 시간 변환
         function timeToMs(timeStr) {
             const parts = timeStr.trim().split(/[:,]/);
             if (parts.length !== 4) return 0;
-            return parseInt(parts[0], 10) * 3600000 + 
-                   parseInt(parts[1], 10) * 60000 + 
-                   parseInt(parts[2], 10) * 1000 + 
-                   parseInt(parts[3], 10);
+            return parseInt(parts[0], 10) * 3600000 + parseInt(parts[1], 10) * 60000 + parseInt(parts[2], 10) * 1000 + parseInt(parts[3], 10);
         }
 
-        // 백틱(``)을 활용하여 구문 분석 에러를 우회한 안전한 SRT 파서
+        // 안전한 SRT 파서 (백틱 적용)
         function parseSrt(srtText) {
-            // 문자열 패턴으로 인식하게 함으로써 편집기 상의 구문 분석 오류 방지
-            const patternStr = "(\\d+)\\r?\\n([\\d:,]+)\\s*-->\\s*([\\d:,]+)\\r?\\n([\\s\\S]*?)(?=\\r?\\n\\r?\\n|\\r?\\n*$)";
+            const patternStr = `(\\d+)\\r?\\n([\\d:,]+)\\s*-->\\s*([\\d:,]+)\\r?\\n([\\s\\S]*?)(?=\\r?\\n\\r?\\n|\\r?\\n*$)`;
             const pattern = new RegExp(patternStr, "g");
             let match;
             const result = [];
-            
             while ((match = pattern.exec(srtText)) !== null) {
                 result.push({
                     id: parseInt(match[1], 10),
@@ -262,27 +276,20 @@
             return result;
         }
 
-        // 한국어 시간 범위에 들어오는 영어 문장들 매칭 및 병합 (시간 동기화)
         function mergeSubtitles(koSubs, enSubs) {
             const merged = [];
-            let displayId = 1;
-
             koSubs.forEach(ko => {
-                const overlappingEn = enSubs.filter(en => 
-                    (ko.startTime < en.endTime) && (en.startTime < ko.endTime)
-                );
-
+                const overlappingEn = enSubs.filter(en => (ko.startTime < en.endTime) && (en.startTime < ko.endTime));
                 if (overlappingEn.length > 0) {
                     const enText = overlappingEn.map(e => e.text).join(' ');
-                    merged.push({ id: displayId++, ko: ko.text, en: enText });
+                    merged.push({ ko: ko.text, en: enText });
                 } else {
-                    merged.push({ id: displayId++, ko: ko.text, en: '' });
+                    merged.push({ ko: ko.text, en: '' });
                 }
             });
             return merged;
         }
 
-        // 화면에 자막 목록 표시
         function displaySubtitles() {
             subtitleList.innerHTML = '';
             if (mergedSubtitles.length === 0) {
@@ -290,104 +297,156 @@
                 return;
             }
 
-            mergedSubtitles.forEach(sub => {
+            mergedSubtitles.forEach((sub, index) => {
                 const item = document.createElement('div');
                 item.className = 'subtitle-item';
-                item.dataset.id = sub.id;
+                item.dataset.index = index;
                 
                 item.innerHTML = `
-                    <div class="subtitle-id">${sub.id}</div>
+                    <div class="subtitle-id">${index + 1}</div>
                     <div class="subtitle-ko">${sub.ko}</div>
-                    <div class="subtitle-en">${sub.en || '<em style="color:#adb5bd;">(No English subtitle match)</em>'}</div>
+                    <div class="subtitle-en">${sub.en || '<em style="color:#adb5bd;">(매칭 안됨)</em>'}</div>
                 `;
 
+                // 🌟 특정 자막 목록 클릭 시
                 item.addEventListener('click', () => {
+                    stopAudio();
+                    currentIndex = index;
+                    isStudying = false; // 선택만 한 상태. 다음 재생 버튼 누를 때 '현재 문장'부터 재생됨
+
+                    // 시각적 활성화 처리
                     document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
+                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-                    koTextDisplay.textContent = sub.ko;
-                    enTextDisplay.textContent = sub.en;
-                    
-                    stopAudio();
+                    // 선택된 문장 화면에 중립적인 상태로 표시 (숨김 없음)
+                    koTextDisplay.textContent = sub.ko || '(내용 없음)';
+                    enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
+                    koTextDisplay.classList.remove('hidden-text');
+                    enTextDisplay.classList.remove('hidden-text');
                 });
-                
                 subtitleList.appendChild(item);
             });
         }
 
-        // 파일 선택 시 로드 및 처리
         async function loadAndProcessFiles() {
             const enFile = enFileInput.files[0];
             const koFile = koFileInput.files[0];
-
-            if (!enFile || !koFile) {
-                subtitleList.innerHTML = `<p class="info-msg">두 종류의 자막(영어/한국어) 파일을 모두 업로드해야 정렬됩니다.</p>`;
-                return;
-            }
+            if (!enFile || !koFile) return;
             
-            subtitleList.innerHTML = `<p class="info-msg">⚙️ 파일 분석 및 다국어 싱크 매칭 작업을 진행하고 있습니다...</p>`;
-
+            subtitleList.innerHTML = `<p class="info-msg">⚙️ 파일 분석 및 다국어 싱크 매칭 중...</p>`;
             try {
                 const enText = await enFile.text();
                 const koText = await koFile.text();
-
-                const enSubs = parseSrt(enText);
-                const koSubs = parseSrt(koText);
-                
-                mergedSubtitles = mergeSubtitles(koSubs, enSubs);
+                mergedSubtitles = mergeSubtitles(parseSrt(koText), parseSrt(enText));
                 displaySubtitles();
             } catch (error) {
-                subtitleList.innerHTML = `<p class="info-msg" style="color: #dc3545;">파일 해석에 실패했습니다. 올바른 형식의 srt 파일인지 다시 한번 확인해 주세요.</p>`;
-                console.error("자막 처리 에러 상세:", error);
+                subtitleList.innerHTML = `<p class="info-msg" style="color: #dc3545;">파일 해석 에러가 발생했습니다.</p>`;
             }
         }
 
         enFileInput.addEventListener('change', loadAndProcessFiles);
         koFileInput.addEventListener('change', loadAndProcessFiles);
 
-        // Web Speech API (TTS) 실행 로직
+        // -------------------------
+        // ⭐️ 음성 재생 로직
+        // -------------------------
         function speak(text, lang) {
-            stopAudio();
-            if (!text || text.trim() === '') return;
+            synth.cancel(); // 겹침 방지
+            setTimeout(() => { 
+                if (!text || text.trim() === '') return;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                currentUtterance = utterance;
 
-            currentText = text;
-            currentLang = lang;
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = lang;
-            currentUtterance = utterance;
-
-            utterance.onend = () => {
-                if (isRepeating && repeatCheckbox.checked) {
-                    speak(currentText, currentLang);
-                } else {
-                    isRepeating = false;
-                    currentUtterance = null;
-                }
-            };
-
-            synth.speak(utterance);
+                utterance.onend = () => {
+                    // 한 줄 반복이 체크되어 있으면 방금 읽은 문장 다시 반복
+                    if (repeatCheckbox.checked && currentUtterance === utterance) {
+                        speak(text, lang);
+                    }
+                };
+                synth.speak(utterance);
+            }, 50);
         }
 
         function stopAudio() {
-            isRepeating = false;
-            if (currentUtterance) {
-                currentUtterance.onend = null;
-            }
             synth.cancel();
+            currentUtterance = null;
         }
 
-        koSpeakBtn.addEventListener('click', () => {
-            isRepeating = true;
-            speak(koTextDisplay.textContent, 'ko-KR');
+        // -------------------------
+        // ⭐️ 버튼 클릭 학습 액션 (재생 및 다음 넘어가기)
+        // -------------------------
+        function playCurrentOrNext(mode) {
+            if (mergedSubtitles.length === 0) return;
+
+            // 처음 재생하거나 이미 공부한 문장이면 다음 인덱스로 이동
+            if (currentIndex === -1) {
+                currentIndex = 0;
+            } else if (isStudying) {
+                currentIndex++;
+                if (currentIndex >= mergedSubtitles.length) {
+                    currentIndex = mergedSubtitles.length - 1; // 끝에 도달하면 멈춤
+                    return; 
+                }
+            }
+            
+            isStudying = true; // 현재 문장 학습 돌입
+            const sub = mergedSubtitles[currentIndex];
+
+            // 리스트 하이라이트 및 스크롤 연동
+            document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
+            const activeItem = document.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
+            if (activeItem) {
+                activeItem.classList.add('active');
+                activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            // 텍스트 화면에 세팅
+            koTextDisplay.textContent = sub.ko || '(내용 없음)';
+            enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
+            koTextDisplay.classList.remove('hidden-text');
+            enTextDisplay.classList.remove('hidden-text');
+
+            // 모드에 따라 반대쪽 언어 가리기 및 읽기
+            if (mode === 'ko') {
+                if(sub.en) enTextDisplay.classList.add('hidden-text');
+                speak(sub.ko, 'ko-KR');
+            } else {
+                if(sub.ko) koTextDisplay.classList.add('hidden-text');
+                speak(sub.en, 'en-US');
+            }
+        }
+
+        koSpeakBtn.addEventListener('click', () => playCurrentOrNext('ko'));
+        enSpeakBtn.addEventListener('click', () => playCurrentOrNext('en'));
+        
+        stopBtn.addEventListener('click', () => {
+            stopAudio();
+            // 정지 누르면 가려진 텍스트 다 보여주기
+            koTextDisplay.classList.remove('hidden-text');
+            enTextDisplay.classList.remove('hidden-text');
         });
 
-        enSpeakBtn.addEventListener('click', () => {
-            isRepeating = true;
-            speak(enTextDisplay.textContent, 'en-US');
+        // -------------------------
+        // ⭐️ 블라인드(숨겨진) 영역 클릭 시 해제 & 발음 재생
+        // -------------------------
+        koTextDisplay.addEventListener('click', () => {
+            if (koTextDisplay.classList.contains('hidden-text')) {
+                koTextDisplay.classList.remove('hidden-text');
+                const text = mergedSubtitles[currentIndex]?.ko;
+                if(text) speak(text, 'ko-KR');
+            }
         });
 
-        stopBtn.addEventListener('click', stopAudio);
+        enTextDisplay.addEventListener('click', () => {
+            if (enTextDisplay.classList.contains('hidden-text')) {
+                enTextDisplay.classList.remove('hidden-text');
+                const text = mergedSubtitles[currentIndex]?.en;
+                if(text) speak(text, 'en-US');
+            }
+        });
+
     </script>
 </body>
 </html>
