@@ -226,6 +226,14 @@
             margin-top: 0;
             font-size: 1.1rem;
             color: #495057;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #save-status {
+            font-size: 0.85rem;
+            color: #28a745;
+            font-weight: normal;
         }
         #subtitle-list {
             height: 380px;
@@ -233,7 +241,7 @@
             border: 1px solid #dee2e6;
             background: #ffffff;
             border-radius: 8px;
-            position: relative; /* 🌟 내부 스크롤 위치 보정을 위해 필수 추가 */
+            position: relative;
             -webkit-overflow-scrolling: touch;
         }
         .subtitle-item {
@@ -338,7 +346,10 @@
     </div>
     
     <div id="subtitle-container">
-        <h2>전체 자막 목록</h2>
+        <h2>
+            전체 자막 목록
+            <span id="save-status"></span> <!-- 저장/불러오기 상태 표시 -->
+        </h2>
         <div id="subtitle-list">
             <p class="info-msg">가이드: 영어 자막과 한국어 자막 파일을 모두 올려주세요.<br>시간이 일치하는 자막끼리 자동으로 매칭됩니다.</p>
         </div>
@@ -354,6 +365,7 @@
         const enSpeakBtn = document.getElementById('en-speak-btn');
         const repeatCheckbox = document.getElementById('repeat-checkbox');
         const stopBtn = document.getElementById('stop-btn');
+        const saveStatus = document.getElementById('save-status');
 
         const koSpeedInput = document.getElementById('ko-speed');
         const enSpeedInput = document.getElementById('en-speed');
@@ -365,6 +377,9 @@
         let currentUtterance = null;
         let currentIndex = -1;
         let isStudying = false; 
+        
+        // 🌟 현재 파일 조합을 식별하기 위한 고유 키
+        let currentFileKey = null;
 
         koSpeedInput.addEventListener('input', () => {
             koSpeedVal.textContent = parseFloat(koSpeedInput.value).toFixed(1);
@@ -372,6 +387,15 @@
         enSpeedInput.addEventListener('input', () => {
             enSpeedVal.textContent = parseFloat(enSpeedInput.value).toFixed(1);
         });
+
+        // 🌟 학습 위치 저장 함수
+        function saveProgress(index) {
+            if (currentFileKey && index >= 0) {
+                localStorage.setItem(currentFileKey, index);
+                saveStatus.textContent = '💾 위치 자동 저장됨';
+                setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+            }
+        }
 
         function timeToMs(timeStr) {
             const parts = timeStr.trim().split(/[:,]/);
@@ -409,14 +433,10 @@
             return merged;
         }
 
-        // 🌟 [핵심 로직] 외부 페이지는 고정하고, 자막 목록 박스만 정밀 스크롤하는 함수
         function scrollListToActive() {
             const activeItem = subtitleList.querySelector('.subtitle-item.active');
             if (activeItem) {
-                // activeItem의 박스 기준 상단 높이 계산
                 const targetScrollTop = activeItem.offsetTop - (subtitleList.clientHeight / 2) + (activeItem.clientHeight / 2);
-                
-                // 목록 상자 내부만 스크롤 (브라우저 바디 스크롤은 전혀 영향을 받지 않음)
                 subtitleList.scrollTo({
                     top: targetScrollTop,
                     behavior: 'smooth'
@@ -446,11 +466,11 @@
                     stopAudio();
                     currentIndex = index;
                     isStudying = true; 
+                    
+                    saveProgress(currentIndex); // 🌟 클릭 시에도 위치 저장
 
                     document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
-                    
-                    // 수동 클릭 시에도 리스트 내에서 해당 아이템을 보기 좋게 정중앙에 고정
                     scrollListToActive();
 
                     koTextDisplay.textContent = sub.ko || '(내용 없음)';
@@ -482,12 +502,45 @@
             const koFile = koFileInput.files[0];
             if (!enFile || !koFile) return;
             
+            // 🌟 파일 이름과 크기를 조합하여 고유한 키 생성
+            currentFileKey = `subtitle_progress_${enFile.name}_${enFile.size}_${koFile.name}_${koFile.size}`;
+            
             subtitleList.innerHTML = `<p class="info-msg">⚙️ 파일 분석 및 매칭 중...</p>`;
             try {
                 const enText = await enFile.text();
                 const koText = await koFile.text();
                 mergedSubtitles = mergeSubtitles(parseSrt(koText), parseSrt(enText));
                 displaySubtitles();
+
+                // 🌟 저장된 학습 위치 복원 로직
+                const savedIndex = localStorage.getItem(currentFileKey);
+                if (savedIndex !== null) {
+                    currentIndex = parseInt(savedIndex, 10);
+                    
+                    if (currentIndex >= 0 && currentIndex < mergedSubtitles.length) {
+                        saveStatus.textContent = '🔄 이전 학습 위치를 불러왔습니다';
+                        setTimeout(() => { saveStatus.textContent = ''; }, 3000);
+
+                        // 리스트 하이라이트
+                        const activeItem = subtitleList.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
+                        if (activeItem) activeItem.classList.add('active');
+                        
+                        // 화면에 표시 (재생은 하지 않고 중립 상태로 보임)
+                        const sub = mergedSubtitles[currentIndex];
+                        koTextDisplay.textContent = sub.ko || '(내용 없음)';
+                        enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
+                        koTextDisplay.classList.remove('hidden-text');
+                        enTextDisplay.classList.remove('hidden-text');
+
+                        // DOM 렌더링 완료 후 부드럽게 스크롤 이동
+                        setTimeout(() => scrollListToActive(), 150);
+                    } else {
+                        currentIndex = -1;
+                    }
+                } else {
+                    currentIndex = -1;
+                }
+
             } catch (error) {
                 subtitleList.innerHTML = `<p class="info-msg" style="color: #dc3545;">파일 해석 에러가 발생했습니다.</p>`;
             }
@@ -551,6 +604,8 @@
             }
             
             isStudying = true; 
+            saveProgress(currentIndex); // 🌟 재생 버튼 누를 때 위치 자동 저장
+
             const sub = mergedSubtitles[currentIndex];
 
             document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
@@ -559,7 +614,6 @@
                 activeItem.classList.add('active');
             }
 
-            // 🌟 자동 재생 버튼 클릭 시 목록 내부만 자동 스크롤시킵니다.
             scrollListToActive();
 
             koTextDisplay.textContent = sub.ko || '(내용 없음)';
