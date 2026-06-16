@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영어 공부 앱 (오류 수정)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #controls, #file-loaders, #selected-subtitle {
+            width: 80%;
+            max-width: 900px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        #file-loaders {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .file-input-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px;
+        }
+        .file-input-wrapper label {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        #controls button, input[type="checkbox"] {
+            margin: 5px 10px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #controls button:hover {
+            background-color: #0056b3;
+        }
+        #controls #stop-btn {
+            background-color: #dc3545;
+        }
+        #controls #stop-btn:hover {
+            background-color: #c82333;
+        }
+        #selected-subtitle {
+            text-align: center;
+        }
+        #ko-text, #en-text {
+            font-size: 1.2em;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #ko-text {
+            background-color: #e9ecef;
+        }
+        #en-text {
+            background-color: #d1ecf1;
+        }
+        #subtitle-list {
+            width: 80%;
+            max-width: 900px;
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+        }
+        .subtitle-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            display: flex;
+            gap: 15px;
+        }
+        .subtitle-item:hover {
+            background-color: #f0f0f0;
+        }
+        .subtitle-id {
+            font-weight: bold;
+            color: #007bff;
+            min-width: 30px;
+        }
+        .subtitle-ko, .subtitle-en {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>영어 학습용 자막 뷰어 (오류 수정)</h1>
+
+    <div id="file-loaders">
+        <div class="file-input-wrapper">
+            <label for="en-file">1. 영어 자막 파일(.srt, .txt) 로드</label>
+            <input type="file" id="en-file" accept=".srt,.txt">
+        </div>
+        <div class="file-input-wrapper">
+            <label for="ko-file">2. 한국어 자막 파일(.srt, .txt) 로드</label>
+            <input type="file" id="ko-file" accept=".srt,.txt">
+        </div>
+    </div>
+
+    <div id="selected-subtitle">
+        <h2>선택된 문장</h2>
+        <div id="ko-text">한국어 자막이 여기에 표시됩니다.</div>
+        <div id="en-text">English subtitle will be displayed here.</div>
+        <div id="controls">
+             <button id="ko-speak-btn">한국어 듣기</button>
+             <button id="en-speak-btn">영어 듣기</button>
+             <label><input type="checkbox" id="repeat-checkbox"> 반복</label>
+             <button id="stop-btn">중지</button>
+        </div>
+    </div>
+    
+    <h2>자막 목록</h2>
+    <div id="subtitle-list">
+        <p><strong>사용법:</strong> 위 버튼을 사용하여 로컬 컴퓨터에 저장된 영어와 한국어 자막 파일을 각각 로드해주세요. 시간대를 기준으로 자막이 자동으로 정렬됩니다.</p>
+    </div>
+
+    <script>
+        const enFileInput = document.getElementById('en-file');
+        const koFileInput = document.getElementById('ko-file');
+        const subtitleList = document.getElementById('subtitle-list');
+        const koTextDisplay = document.getElementById('ko-text');
+        const enTextDisplay = document.getElementById('en-text');
+        const koSpeakBtn = document.getElementById('ko-speak-btn');
+        const enSpeakBtn = document.getElementById('en-speak-btn');
+        const repeatCheckbox = document.getElementById('repeat-checkbox');
+        const stopBtn = document.getElementById('stop-btn');
+
+        let mergedSubtitles = [];
+        const synth = window.speechSynthesis;
+        let currentUtterance = null;
+        let isRepeating = false;
+
+        function timeToMs(time) {
+            const parts = time.split(/[:,]/);
+            if (parts.length !== 4) return 0;
+            return parseInt(parts[0], 10) * 3600000 + parseInt(parts[1], 10) * 60000 + parseInt(parts[2], 10) * 1000 + parseInt(parts[3], 10);
+        }
+
+        function parseSrt(srtText) {
+            const pattern = `/(\d+)\r?\n([\d:,]+)\s*-->\s*([\d:,]+)\r?\n([\s\S]*?)(?=\r?\n\r?\n|\r?\n*$)/g`;
+            let match;
+            const result = [];
+            while ((match = pattern.exec(srtText)) !== null) {
+                result.push({
+                    id: parseInt(match[1]),
+                    startTime: timeToMs(match[2]),
+                    endTime: timeToMs(match[3]),
+                    text: match[4].replace(/\r?\n/g, ' ').trim()
+                });
+            }
+            return result;
+        }
+
+        function mergeSubtitles(koSubs, enSubs) {
+            const merged = [];
+            let displayId = 1;
+
+            koSubs.forEach(ko => {
+                const overlappingEn = enSubs.filter(en => 
+                    (ko.startTime < en.endTime) && (en.startTime < ko.endTime)
+                );
+
+                if (overlappingEn.length > 0) {
+                    const enText = overlappingEn.map(e => e.text).join(' ');
+                    merged.push({ id: displayId++, ko: ko.text, en: enText });
+                } else {
+                    merged.push({ id: displayId++, ko: ko.text, en: '' });
+                }
+            });
+            return merged;
+        }
+
+        function displaySubtitles() {
+            subtitleList.innerHTML = '';
+            mergedSubtitles.forEach(sub => {
+                const item = document.createElement('div');
+                item.className = 'subtitle-item';
+                item.dataset.id = sub.id;
+                item.innerHTML = `<div class="subtitle-id">${sub.id}</div><div class="subtitle-ko">${sub.ko}</div><div class="subtitle-en">${sub.en || '(일치하는 영어 자막 없음)'}</div>`;
+                item.addEventListener('click', () => {
+                    koTextDisplay.textContent = sub.ko;
+                    enTextDisplay.textContent = sub.en;
+                });
+                subtitleList.appendChild(item);
+            });
+        }
+
+        async function loadAndProcessFiles() {
+            const enFile = enFileInput.files[0];
+            const koFile = koFileInput.files[0];
+
+            if (!enFile || !koFile) {
+                subtitleList.innerHTML = `<p>영어와 한국어 자막 파일을 모두 선택해주세요.</p>`;
+                return;
+            }
+            
+            subtitleList.innerHTML = `<p>자막을 처리 중입니다...</p>`;
+
+            try {
+                const enText = await enFile.text();
+                const koText = await koFile.text();
+
+                const enSubs = parseSrt(enText);
+                const koSubs = parseSrt(koText);
+                
+                mergedSubtitles = mergeSubtitles(koSubs, enSubs);
+                displaySubtitles();
+            } catch (error) {
+                subtitleList.innerHTML = `<p>파일을 읽거나 처리하는 중 오류가 발생했습니다. 파일 인코딩(UTF-8)을 확인해주세요.</p>`;
+                console.error("File processing error:", error);
+            }
+        }
+
+        enFileInput.addEventListener('change', loadAndProcessFiles);
+        koFileInput.addEventListener('change', loadAndProcessFiles);
+
+        function speak(text, lang) {
+            if (synth.speaking) {
+                synth.cancel();
+            }
+            if (!text || text.trim() === '') return;
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.lang = lang;
+            
+            const onEnd = () => {
+                if (isRepeating && repeatCheckbox.checked) {
+                    synth.speak(currentUtterance);
+                } else {
+                    isRepeating = false;
+                    currentUtterance = null;
+                }
+            };
+            
+            currentUtterance.onend = onEnd;
+            synth.speak(currentUtterance);
+        }
+
+        koSpeakBtn.addEventListener('click', () => {
+            isRepeating = true;
+            speak(koTextDisplay.textContent, 'ko-KR');
+        });
+
+        enSpeakBtn.addEventListener('click', () => {
+            isRepeating = true;
+            speak(enTextDisplay.textContent, 'en-US');
+        });
+
+        stopBtn.addEventListener('click', () => {
+            isRepeating = false;
+            if (currentUtterance) {
+                currentUtterance.onend = null;
+            }
+            synth.cancel();
+        });
+    </script>
+</body>
+</html>
