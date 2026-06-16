@@ -73,10 +73,10 @@
             justify-content: center;
             word-break: keep-all;
             transition: all 0.2s ease;
-            cursor: pointer; /* 클릭 가능하다는 표시 */
+            cursor: pointer;
         }
         #ko-text:hover, #en-text:hover {
-            opacity: 0.9; /* 마우스 오버 시 시각적 피드백 */
+            opacity: 0.9;
         }
         #ko-text {
             background-color: #f1f3f5;
@@ -250,19 +250,15 @@
         let mergedSubtitles = [];
         const synth = window.speechSynthesis;
         let currentUtterance = null;
-        
-        // 상태 변수
         let currentIndex = -1;
         let isStudying = false; 
 
-        // 시간 변환
         function timeToMs(timeStr) {
             const parts = timeStr.trim().split(/[:,]/);
             if (parts.length !== 4) return 0;
             return parseInt(parts[0], 10) * 3600000 + parseInt(parts[1], 10) * 60000 + parseInt(parts[2], 10) * 1000 + parseInt(parts[3], 10);
         }
 
-        // 안전한 SRT 파서 (백틱 적용)
         function parseSrt(srtText) {
             const patternStr = `(\\d+)\\r?\\n([\\d:,]+)\\s*-->\\s*([\\d:,]+)\\r?\\n([\\s\\S]*?)(?=\\r?\\n\\r?\\n|\\r?\\n*$)`;
             const pattern = new RegExp(patternStr, "g");
@@ -311,32 +307,22 @@
                     <div class="subtitle-en">${sub.en || '<em style="color:#adb5bd;">(매칭 안됨)</em>'}</div>
                 `;
 
-                // 🌟 [수정] 자막 목록 클릭 시 동작
                 item.addEventListener('click', () => {
                     stopAudio();
                     currentIndex = index;
-                    isStudying = true; // 현재 문장 학습 중으로 상태 변경
+                    isStudying = true; 
 
-                    // 시각적 활성화 처리
                     document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
 
-                    // 선택된 문장 화면에 표시
                     koTextDisplay.textContent = sub.ko || '(내용 없음)';
                     enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
                     
-                    // 한국어는 보여주고, 영어는 숨기기
                     koTextDisplay.classList.remove('hidden-text');
-                    if (sub.en) {
-                        enTextDisplay.classList.add('hidden-text');
-                    } else {
-                        enTextDisplay.classList.remove('hidden-text');
-                    }
+                    if (sub.en) enTextDisplay.classList.add('hidden-text');
+                    else enTextDisplay.classList.remove('hidden-text');
 
-                    // 한국어 음성 즉시 재생
-                    if (sub.ko) {
-                        speak(sub.ko, 'ko-KR');
-                    }
+                    if (sub.ko) speak(sub.ko, 'ko-KR');
                 });
                 
                 subtitleList.appendChild(item);
@@ -348,7 +334,7 @@
             const koFile = koFileInput.files[0];
             if (!enFile || !koFile) return;
             
-            subtitleList.innerHTML = `<p class="info-msg">⚙️ 파일 분석 및 다국어 싱크 매칭 중...</p>`;
+            subtitleList.innerHTML = `<p class="info-msg">⚙️ 파일 분석 및 매칭 중...</p>`;
             try {
                 const enText = await enFile.text();
                 const koText = await koFile.text();
@@ -363,23 +349,50 @@
         koFileInput.addEventListener('change', loadAndProcessFiles);
 
         // -------------------------
-        // 음성 재생 로직
+        // 🌟 음성 정제(필터링) 함수 추가
+        // -------------------------
+        function cleanTextForSpeech(text) {
+            if (!text) return '';
+            let cleaned = text;
+            
+            // 1. 대괄호/소괄호 안의 내용 전체 제거 (예: [birds chirping], (음악 소리), [Libby])
+            cleaned = cleaned.replace(/\[.*?\]/g, ' ');
+            cleaned = cleaned.replace(/\(.*?\) /g, ' ');
+            
+            // 2. 발음에 방해되는 특수 기호들 제거 (대시, 물결표, 별표, 음악 기호)
+            cleaned = cleaned.replace(/[-~*♪♫]/g, ' ');
+            
+            // 3. 화자 표시 콜론(이름:) 제거 (간혹 사용되는 방식 대비)
+            cleaned = cleaned.replace(/^[가-힣A-Za-z0-9\s]+:/gm, ' ');
+            
+            // 4. 불필요하게 남은 공백들 하나로 압축
+            return cleaned.replace(/\s+/g, ' ').trim();
+        }
+
+        // -------------------------
+        // 음성 재생 로직 (필터링 적용)
         // -------------------------
         function speak(text, lang) {
             synth.cancel(); 
             setTimeout(() => { 
-                if (!text || text.trim() === '') return;
-                const utterance = new SpeechSynthesisUtterance(text);
+                // 원본 텍스트(text)를 화면에는 그대로 두고, 소리낼 때만 필터링(cleanedText)
+                const cleanedText = cleanTextForSpeech(text);
+                
+                // 만약 [birds chirping] 처럼 발음할 내용이 아예 없는 문장이면 발음하지 않음
+                if (!cleanedText || cleanedText === '') return;
+                
+                const utterance = new SpeechSynthesisUtterance(cleanedText);
                 utterance.lang = lang;
                 currentUtterance = utterance;
 
                 utterance.onend = () => {
+                    // 원본 텍스트를 파라미터로 넘겨 반복 실행
                     if (repeatCheckbox.checked && currentUtterance === utterance) {
                         speak(text, lang);
                     }
                 };
                 synth.speak(utterance);
-            }, 50); // 재생 꼬임 방지를 위한 짧은 딜레이
+            }, 50); 
         }
 
         function stopAudio() {
@@ -387,9 +400,6 @@
             currentUtterance = null;
         }
 
-        // -------------------------
-        // 버튼 클릭 학습 액션 (재생 및 다음 넘어가기)
-        // -------------------------
         function playCurrentOrNext(mode) {
             if (mergedSubtitles.length === 0) return;
 
@@ -406,14 +416,12 @@
             isStudying = true; 
             const sub = mergedSubtitles[currentIndex];
 
-            // 자막 리스트 하이라이트
             document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
             const activeItem = document.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
             if (activeItem) {
                 activeItem.classList.add('active');
             }
 
-            // 텍스트 화면에 세팅
             koTextDisplay.textContent = sub.ko || '(내용 없음)';
             enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
             koTextDisplay.classList.remove('hidden-text');
@@ -437,27 +445,16 @@
             enTextDisplay.classList.remove('hidden-text');
         });
 
-        // -------------------------
-        // 🌟 [수정] 학습 모드 자막 영역 클릭 시 동작
-        // -------------------------
         koTextDisplay.addEventListener('click', () => {
-            if (currentIndex === -1) return; // 파일 로드 전 클릭 방지
-            
-            // 무조건 숨김 클래스를 제거 (이미 보여진 상태면 변화 없음)
+            if (currentIndex === -1) return; 
             koTextDisplay.classList.remove('hidden-text');
-            
-            // 해당 텍스트를 읽어줌
             const text = mergedSubtitles[currentIndex]?.ko;
             if(text) speak(text, 'ko-KR');
         });
 
         enTextDisplay.addEventListener('click', () => {
-            if (currentIndex === -1) return; // 파일 로드 전 클릭 방지
-            
-            // 무조건 숨김 클래스를 제거 (이미 보여진 상태면 변화 없음)
+            if (currentIndex === -1) return; 
             enTextDisplay.classList.remove('hidden-text');
-            
-            // 해당 텍스트를 읽어줌
             const text = mergedSubtitles[currentIndex]?.en;
             if(text) speak(text, 'en-US');
         });
