@@ -24,7 +24,7 @@
             text-align: center;
         }
 
-        /* 공통 카드 스타일 (반응형 너비 제공) */
+        /* 공통 카드 스타일 */
         #file-loaders, #selected-subtitle, #subtitle-container {
             width: 100%;
             max-width: 900px;
@@ -36,7 +36,7 @@
             box-sizing: border-box;
         }
 
-        /* 1. 파일 업로더 레이아웃 */
+        /* 파일 업로더 레이아웃 */
         #file-loaders {
             display: flex;
             flex-direction: row;
@@ -50,7 +50,7 @@
             flex-direction: column;
             align-items: center;
             flex: 1;
-            min-width: 250px; /* 모바일에서도 찌그러지지 않게 최소 너비 보장 */
+            min-width: 250px;
         }
         .file-input-wrapper label {
             font-weight: 600;
@@ -69,7 +69,7 @@
             font-size: 0.9rem;
         }
 
-        /* 2. 학습 모드 화면 */
+        /* 학습 모드 화면 */
         #selected-subtitle {
             text-align: center;
         }
@@ -96,7 +96,7 @@
             word-break: keep-all;
             transition: all 0.2s ease;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent; /* 모바일 터치 깜빡임 방지 */
+            -webkit-tap-highlight-color: transparent;
         }
         #ko-text {
             background-color: #f1f3f5;
@@ -109,7 +109,7 @@
             border-left: 5px solid #007bff;
         }
 
-        /* 모바일 친화적 블라인드 처리 */
+        /* 블라인드 처리 CSS */
         .hidden-text {
             background-color: #dee2e6 !important;
             color: transparent !important;
@@ -133,7 +133,42 @@
             background-color: #ced4da !important;
         }
 
-        /* 3. 제어판 버튼 레이아웃 */
+        /* 🌟 속도 조절 패널 */
+        #speed-controls {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .speed-slider {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            min-width: 150px;
+        }
+        .speed-slider label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        .speed-slider span {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .speed-slider input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* 제어판 버튼 레이아웃 */
         #controls {
             display: flex;
             justify-content: center;
@@ -143,7 +178,7 @@
             margin-top: 15px;
         }
         #controls button {
-            padding: 12px 18px; /* 터치하기 좋은 넉넉한 높이 */
+            padding: 12px 18px;
             border-radius: 8px;
             border: none;
             background-color: #007bff;
@@ -152,7 +187,7 @@
             cursor: pointer;
             font-size: 0.95rem;
             transition: background-color 0.2s;
-            flex: 1 1 auto; /* 모바일에서 자동 크기 조절 */
+            flex: 1 1 auto;
             min-width: 130px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
@@ -166,7 +201,6 @@
             background-color: #5a6268;
         }
         
-        /* 한 줄 반복 체크박스 정렬 */
         .checkbox-wrapper {
             display: flex;
             align-items: center;
@@ -175,7 +209,7 @@
             color: #495057;
             cursor: pointer;
             user-select: none;
-            background: #f8f9fa;
+            background: #ffffff;
             padding: 10px 14px;
             border-radius: 8px;
             border: 1px solid #dee2e6;
@@ -187,19 +221,19 @@
             transform: scale(1.2);
         }
 
-        /* 4. 자막 리스트 스타일 */
+        /* 자막 리스트 스타일 */
         #subtitle-container h2 {
             margin-top: 0;
             font-size: 1.1rem;
             color: #495057;
         }
         #subtitle-list {
-            height: 380px; /* 모바일 세로 길이 고려 축소 */
+            height: 380px;
             overflow-y: auto;
             border: 1px solid #dee2e6;
             background: #ffffff;
             border-radius: 8px;
-            -webkit-overflow-scrolling: touch; /* iOS 모바일 부드러운 스크롤 */
+            -webkit-overflow-scrolling: touch;
         }
         .subtitle-item {
             padding: 14px 12px;
@@ -245,56 +279,19 @@
             line-height: 1.5;
         }
 
-        /* ========================================== */
-        /* 📱 스마트폰/테블릿 전용 모바일 미디어 쿼리 */
-        /* ========================================== */
+        /* 모바일 반응형 최적화 */
         @media (max-width: 768px) {
-            body {
-                padding: 8px;
-            }
-            h1 {
-                font-size: 1.35rem;
-                margin: 10px 0;
-            }
-            #file-loaders, #selected-subtitle, #subtitle-container {
-                padding: 15px;
-                margin-bottom: 10px;
-            }
-            #file-loaders {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .file-input-wrapper {
-                width: 100%;
-                min-width: 100%;
-            }
-            #ko-text, #en-text {
-                font-size: 1.1rem; /* 모바일에서 텍스트 크기 최적화 */
-                padding: 15px 10px;
-            }
-            #controls {
-                gap: 8px;
-            }
-            #controls button {
-                font-size: 0.9rem;
-                padding: 10px 12px;
-                flex: 1 1 45%; /* 모바일에서 버튼이 2열로 정렬되도록 조정 */
-            }
-            .checkbox-wrapper {
-                flex: 1 1 100%; /* 체크박스는 한 행을 통째로 차지 */
-                margin-top: 5px;
-            }
-            .subtitle-item {
-                flex-direction: column; /* 모바일 자막 목록은 가로가 아닌 세로(위아래)로 나열 */
-                gap: 5px;
-                padding: 12px;
-            }
-            .subtitle-id {
-                text-align: left;
-                border-bottom: 1px dashed #dee2e6;
-                padding-bottom: 3px;
-                margin-bottom: 3px;
-            }
+            body { padding: 8px; }
+            h1 { font-size: 1.35rem; margin: 10px 0; }
+            #file-loaders, #selected-subtitle, #subtitle-container { padding: 15px; margin-bottom: 10px; }
+            #file-loaders { flex-direction: column; align-items: stretch; }
+            .file-input-wrapper { width: 100%; min-width: 100%; }
+            #ko-text, #en-text { font-size: 1.1rem; padding: 15px 10px; }
+            #controls { gap: 8px; }
+            #controls button { font-size: 0.9rem; padding: 10px 12px; flex: 1 1 45%; }
+            .checkbox-wrapper { flex: 1 1 100%; margin-top: 5px; }
+            .subtitle-item { flex-direction: column; gap: 5px; padding: 12px; }
+            .subtitle-id { text-align: left; border-bottom: 1px dashed #dee2e6; padding-bottom: 3px; margin-bottom: 3px; }
         }
     </style>
 </head>
@@ -302,7 +299,6 @@
 
     <h1>🎬 스마트폰 & PC 겸용 자막 학습기</h1>
 
-    <!-- 1. 파일 업로드 영역 -->
     <div id="file-loaders">
         <div class="file-input-wrapper">
             <label for="en-file">🔤 영어 자막 파일 (.srt / .txt)</label>
@@ -314,12 +310,23 @@
         </div>
     </div>
 
-    <!-- 2. 학습 모드 화면 -->
     <div id="selected-subtitle">
         <h2>학습 모드 화면</h2>
         <div id="ko-text">자막을 불러오신 후 아래 재생 버튼을 누르거나 목록을 클릭하세요.</div>
         <div id="en-text">The English subtitle will be displayed here.</div>
         
+        <!-- 🌟 새로 추가된 속도 조절 패널 -->
+        <div id="speed-controls">
+            <div class="speed-slider">
+                <label for="ko-speed">🇰🇷 한국어 속도: <span id="ko-speed-val">1.0</span>x</label>
+                <input type="range" id="ko-speed" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="speed-slider">
+                <label for="en-speed">🔤 영어 속도: <span id="en-speed-val">1.0</span>x</label>
+                <input type="range" id="en-speed" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+        </div>
+
         <div id="controls">
              <button id="ko-speak-btn">▶️ 한국어 재생 / 다음</button>
              <button id="en-speak-btn">▶️ 영어 재생 / 다음</button>
@@ -330,7 +337,6 @@
         </div>
     </div>
     
-    <!-- 3. 전체 자막 목록 -->
     <div id="subtitle-container">
         <h2>전체 자막 목록</h2>
         <div id="subtitle-list">
@@ -349,11 +355,25 @@
         const repeatCheckbox = document.getElementById('repeat-checkbox');
         const stopBtn = document.getElementById('stop-btn');
 
+        // 속도 조절 UI 요소
+        const koSpeedInput = document.getElementById('ko-speed');
+        const enSpeedInput = document.getElementById('en-speed');
+        const koSpeedVal = document.getElementById('ko-speed-val');
+        const enSpeedVal = document.getElementById('en-speed-val');
+
         let mergedSubtitles = [];
         const synth = window.speechSynthesis;
         let currentUtterance = null;
         let currentIndex = -1;
         let isStudying = false; 
+
+        // 속도 조절 슬라이더 이벤트 연결
+        koSpeedInput.addEventListener('input', () => {
+            koSpeedVal.textContent = parseFloat(koSpeedInput.value).toFixed(1);
+        });
+        enSpeedInput.addEventListener('input', () => {
+            enSpeedVal.textContent = parseFloat(enSpeedInput.value).toFixed(1);
+        });
 
         function timeToMs(timeStr) {
             const parts = timeStr.trim().split(/[:,]/);
@@ -409,7 +429,6 @@
                     <div class="subtitle-en">${sub.en || '<em style="color:#adb5bd;">(매칭 안됨)</em>'}</div>
                 `;
 
-                // 자막 클릭 시 (영역 감지)
                 item.addEventListener('click', (event) => {
                     stopAudio();
                     currentIndex = index;
@@ -461,7 +480,6 @@
         enFileInput.addEventListener('change', loadAndProcessFiles);
         koFileInput.addEventListener('change', loadAndProcessFiles);
 
-        // TTS 오염 자막 정제 함수
         function cleanTextForSpeech(text) {
             if (!text) return '';
             let cleaned = text;
@@ -472,7 +490,7 @@
             return cleaned.replace(/\s+/g, ' ').trim();
         }
 
-        // 음성 재생
+        // 🌟 수정된 음성 재생 로직 (언어별 재생 속도 적용)
         function speak(text, lang) {
             synth.cancel(); 
             setTimeout(() => { 
@@ -481,6 +499,14 @@
                 
                 const utterance = new SpeechSynthesisUtterance(cleanedText);
                 utterance.lang = lang;
+
+                // 언어에 맞춰 설정된 속도(rate)를 가져와 적용합니다.
+                if (lang === 'ko-KR') {
+                    utterance.rate = parseFloat(koSpeedInput.value);
+                } else {
+                    utterance.rate = parseFloat(enSpeedInput.value);
+                }
+
                 currentUtterance = utterance;
 
                 utterance.onend = () => {
