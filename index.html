@@ -73,6 +73,10 @@
             justify-content: center;
             word-break: keep-all;
             transition: all 0.2s ease;
+            cursor: pointer; /* 클릭 가능하다는 표시 */
+        }
+        #ko-text:hover, #en-text:hover {
+            opacity: 0.9; /* 마우스 오버 시 시각적 피드백 */
         }
         #ko-text {
             background-color: #f1f3f5;
@@ -221,7 +225,7 @@
              <label class="checkbox-wrapper">
                  <input type="checkbox" id="repeat-checkbox"> 🔁 한 줄 반복
              </label>
-             <button id="stop-btn">⏹ 정지</button>
+             <button id="stop-btn">⏹ 정지 및 모두 보기</button>
         </div>
     </div>
     
@@ -307,22 +311,34 @@
                     <div class="subtitle-en">${sub.en || '<em style="color:#adb5bd;">(매칭 안됨)</em>'}</div>
                 `;
 
-                // 특정 자막 목록 클릭 시
+                // 🌟 [수정] 자막 목록 클릭 시 동작
                 item.addEventListener('click', () => {
                     stopAudio();
                     currentIndex = index;
-                    isStudying = false; 
+                    isStudying = true; // 현재 문장 학습 중으로 상태 변경
 
-                    // 시각적 활성화 처리 (scrollIntoView 제거)
+                    // 시각적 활성화 처리
                     document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
 
-                    // 선택된 문장 화면에 중립적인 상태로 표시 (숨김 없음)
+                    // 선택된 문장 화면에 표시
                     koTextDisplay.textContent = sub.ko || '(내용 없음)';
                     enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
+                    
+                    // 한국어는 보여주고, 영어는 숨기기
                     koTextDisplay.classList.remove('hidden-text');
-                    enTextDisplay.classList.remove('hidden-text');
+                    if (sub.en) {
+                        enTextDisplay.classList.add('hidden-text');
+                    } else {
+                        enTextDisplay.classList.remove('hidden-text');
+                    }
+
+                    // 한국어 음성 즉시 재생
+                    if (sub.ko) {
+                        speak(sub.ko, 'ko-KR');
+                    }
                 });
+                
                 subtitleList.appendChild(item);
             });
         }
@@ -363,7 +379,7 @@
                     }
                 };
                 synth.speak(utterance);
-            }, 50);
+            }, 50); // 재생 꼬임 방지를 위한 짧은 딜레이
         }
 
         function stopAudio() {
@@ -390,7 +406,7 @@
             isStudying = true; 
             const sub = mergedSubtitles[currentIndex];
 
-            // 자막 리스트 하이라이트 처리만 남겨두고, scrollIntoView() 함수는 완전히 제거했습니다.
+            // 자막 리스트 하이라이트
             document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
             const activeItem = document.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
             if (activeItem) {
@@ -422,22 +438,28 @@
         });
 
         // -------------------------
-        // 블라인드(숨겨진) 영역 클릭 시 해제 & 발음 재생
+        // 🌟 [수정] 학습 모드 자막 영역 클릭 시 동작
         // -------------------------
         koTextDisplay.addEventListener('click', () => {
-            if (koTextDisplay.classList.contains('hidden-text')) {
-                koTextDisplay.classList.remove('hidden-text');
-                const text = mergedSubtitles[currentIndex]?.ko;
-                if(text) speak(text, 'ko-KR');
-            }
+            if (currentIndex === -1) return; // 파일 로드 전 클릭 방지
+            
+            // 무조건 숨김 클래스를 제거 (이미 보여진 상태면 변화 없음)
+            koTextDisplay.classList.remove('hidden-text');
+            
+            // 해당 텍스트를 읽어줌
+            const text = mergedSubtitles[currentIndex]?.ko;
+            if(text) speak(text, 'ko-KR');
         });
 
         enTextDisplay.addEventListener('click', () => {
-            if (enTextDisplay.classList.contains('hidden-text')) {
-                enTextDisplay.classList.remove('hidden-text');
-                const text = mergedSubtitles[currentIndex]?.en;
-                if(text) speak(text, 'en-US');
-            }
+            if (currentIndex === -1) return; // 파일 로드 전 클릭 방지
+            
+            // 무조건 숨김 클래스를 제거 (이미 보여진 상태면 변화 없음)
+            enTextDisplay.classList.remove('hidden-text');
+            
+            // 해당 텍스트를 읽어줌
+            const text = mergedSubtitles[currentIndex]?.en;
+            if(text) speak(text, 'en-US');
         });
 
     </script>
