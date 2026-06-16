@@ -84,7 +84,7 @@
             color: #0056b3;
             border-left: 5px solid #007bff;
         }
-        /* ⭐️ 블라인드(숨김) 처리 CSS */
+        /* 블라인드(숨김) 처리 CSS */
         .hidden-text {
             background-color: #dee2e6 !important;
             color: transparent !important;
@@ -157,7 +157,6 @@
             border: 1px solid #dee2e6;
             background: #ffffff;
             border-radius: 8px;
-            scroll-behavior: smooth;
         }
         .subtitle-item {
             padding: 12px 15px;
@@ -250,7 +249,7 @@
         
         // 상태 변수
         let currentIndex = -1;
-        let isStudying = false; // 현재 문장 재생을 시작했는지 여부
+        let isStudying = false; 
 
         // 시간 변환
         function timeToMs(timeStr) {
@@ -308,16 +307,15 @@
                     <div class="subtitle-en">${sub.en || '<em style="color:#adb5bd;">(매칭 안됨)</em>'}</div>
                 `;
 
-                // 🌟 특정 자막 목록 클릭 시
+                // 특정 자막 목록 클릭 시
                 item.addEventListener('click', () => {
                     stopAudio();
                     currentIndex = index;
-                    isStudying = false; // 선택만 한 상태. 다음 재생 버튼 누를 때 '현재 문장'부터 재생됨
+                    isStudying = false; 
 
-                    // 시각적 활성화 처리
+                    // 시각적 활성화 처리 (scrollIntoView 제거)
                     document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
-                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
                     // 선택된 문장 화면에 중립적인 상태로 표시 (숨김 없음)
                     koTextDisplay.textContent = sub.ko || '(내용 없음)';
@@ -349,10 +347,10 @@
         koFileInput.addEventListener('change', loadAndProcessFiles);
 
         // -------------------------
-        // ⭐️ 음성 재생 로직
+        // 음성 재생 로직
         // -------------------------
         function speak(text, lang) {
-            synth.cancel(); // 겹침 방지
+            synth.cancel(); 
             setTimeout(() => { 
                 if (!text || text.trim() === '') return;
                 const utterance = new SpeechSynthesisUtterance(text);
@@ -360,7 +358,6 @@
                 currentUtterance = utterance;
 
                 utterance.onend = () => {
-                    // 한 줄 반복이 체크되어 있으면 방금 읽은 문장 다시 반복
                     if (repeatCheckbox.checked && currentUtterance === utterance) {
                         speak(text, lang);
                     }
@@ -375,31 +372,29 @@
         }
 
         // -------------------------
-        // ⭐️ 버튼 클릭 학습 액션 (재생 및 다음 넘어가기)
+        // 버튼 클릭 학습 액션 (재생 및 다음 넘어가기)
         // -------------------------
         function playCurrentOrNext(mode) {
             if (mergedSubtitles.length === 0) return;
 
-            // 처음 재생하거나 이미 공부한 문장이면 다음 인덱스로 이동
             if (currentIndex === -1) {
                 currentIndex = 0;
             } else if (isStudying) {
                 currentIndex++;
                 if (currentIndex >= mergedSubtitles.length) {
-                    currentIndex = mergedSubtitles.length - 1; // 끝에 도달하면 멈춤
+                    currentIndex = mergedSubtitles.length - 1; 
                     return; 
                 }
             }
             
-            isStudying = true; // 현재 문장 학습 돌입
+            isStudying = true; 
             const sub = mergedSubtitles[currentIndex];
 
-            // 리스트 하이라이트 및 스크롤 연동
+            // 자막 리스트 하이라이트 처리만 남겨두고, scrollIntoView() 함수는 완전히 제거했습니다.
             document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
             const activeItem = document.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
             if (activeItem) {
                 activeItem.classList.add('active');
-                activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
             // 텍스트 화면에 세팅
@@ -408,7 +403,6 @@
             koTextDisplay.classList.remove('hidden-text');
             enTextDisplay.classList.remove('hidden-text');
 
-            // 모드에 따라 반대쪽 언어 가리기 및 읽기
             if (mode === 'ko') {
                 if(sub.en) enTextDisplay.classList.add('hidden-text');
                 speak(sub.ko, 'ko-KR');
@@ -423,13 +417,12 @@
         
         stopBtn.addEventListener('click', () => {
             stopAudio();
-            // 정지 누르면 가려진 텍스트 다 보여주기
             koTextDisplay.classList.remove('hidden-text');
             enTextDisplay.classList.remove('hidden-text');
         });
 
         // -------------------------
-        // ⭐️ 블라인드(숨겨진) 영역 클릭 시 해제 & 발음 재생
+        // 블라인드(숨겨진) 영역 클릭 시 해제 & 발음 재생
         // -------------------------
         koTextDisplay.addEventListener('click', () => {
             if (koTextDisplay.classList.contains('hidden-text')) {
