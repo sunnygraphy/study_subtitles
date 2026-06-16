@@ -187,7 +187,11 @@
             flex: 1;
             line-height: 1.4;
             word-break: keep-all;
+            padding: 4px; /* 클릭 영역 확보 */
+            border-radius: 4px;
         }
+        .subtitle-ko:hover { background-color: #e9ecef; }
+        .subtitle-en:hover { background-color: #d1ecf1; }
         .subtitle-en {
             font-weight: 500;
         }
@@ -307,22 +311,38 @@
                     <div class="subtitle-en">${sub.en || '<em style="color:#adb5bd;">(매칭 안됨)</em>'}</div>
                 `;
 
-                item.addEventListener('click', () => {
+                // 🌟 [핵심 변경] 영역별 클릭 처리
+                item.addEventListener('click', (event) => {
                     stopAudio();
                     currentIndex = index;
                     isStudying = true; 
 
+                    // 활성화 표시
                     document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
 
+                    // 텍스트 화면에 세팅
                     koTextDisplay.textContent = sub.ko || '(내용 없음)';
                     enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
                     
-                    koTextDisplay.classList.remove('hidden-text');
-                    if (sub.en) enTextDisplay.classList.add('hidden-text');
-                    else enTextDisplay.classList.remove('hidden-text');
+                    // 영어 자막 텍스트(.subtitle-en)를 클릭했는지 확인
+                    const isEnglishClicked = event.target.closest('.subtitle-en');
 
-                    if (sub.ko) speak(sub.ko, 'ko-KR');
+                    if (isEnglishClicked) {
+                        // 1. 영어 자막 클릭 시: 영어가 보이고, 한국어가 숨겨짐
+                        enTextDisplay.classList.remove('hidden-text');
+                        if (sub.ko) koTextDisplay.classList.add('hidden-text');
+                        else koTextDisplay.classList.remove('hidden-text');
+                        
+                        if (sub.en) speak(sub.en, 'en-US');
+                    } else {
+                        // 2. 한국어 자막(또는 기타 영역) 클릭 시: 한국어가 보이고, 영어가 숨겨짐
+                        koTextDisplay.classList.remove('hidden-text');
+                        if (sub.en) enTextDisplay.classList.add('hidden-text');
+                        else enTextDisplay.classList.remove('hidden-text');
+                        
+                        if (sub.ko) speak(sub.ko, 'ko-KR');
+                    }
                 });
                 
                 subtitleList.appendChild(item);
@@ -348,37 +368,22 @@
         enFileInput.addEventListener('change', loadAndProcessFiles);
         koFileInput.addEventListener('change', loadAndProcessFiles);
 
-        // -------------------------
-        // 🌟 음성 정제(필터링) 함수 추가
-        // -------------------------
+        // 음성 정제(필터링) 함수
         function cleanTextForSpeech(text) {
             if (!text) return '';
             let cleaned = text;
-            
-            // 1. 대괄호/소괄호 안의 내용 전체 제거 (예: [birds chirping], (음악 소리), [Libby])
-            cleaned = cleaned.replace(/\[.*?\]/g, ' ');
-            cleaned = cleaned.replace(/\(.*?\) /g, ' ');
-            
-            // 2. 발음에 방해되는 특수 기호들 제거 (대시, 물결표, 별표, 음악 기호)
-            cleaned = cleaned.replace(/[-~*♪♫]/g, ' ');
-            
-            // 3. 화자 표시 콜론(이름:) 제거 (간혹 사용되는 방식 대비)
-            cleaned = cleaned.replace(/^[가-힣A-Za-z0-9\s]+:/gm, ' ');
-            
-            // 4. 불필요하게 남은 공백들 하나로 압축
+            cleaned = cleaned.replace(/\[.*?\]/g, ' '); // [ ] 괄호 내용 제거
+            cleaned = cleaned.replace(/\(.*?\) /g, ' '); // ( ) 괄호 내용 제거
+            cleaned = cleaned.replace(/[-~*♪♫]/g, ' '); // 기호 제거
+            cleaned = cleaned.replace(/^[가-힣A-Za-z0-9\s]+:/gm, ' '); // 이름: 제거
             return cleaned.replace(/\s+/g, ' ').trim();
         }
 
-        // -------------------------
-        // 음성 재생 로직 (필터링 적용)
-        // -------------------------
+        // 음성 재생 로직
         function speak(text, lang) {
             synth.cancel(); 
             setTimeout(() => { 
-                // 원본 텍스트(text)를 화면에는 그대로 두고, 소리낼 때만 필터링(cleanedText)
                 const cleanedText = cleanTextForSpeech(text);
-                
-                // 만약 [birds chirping] 처럼 발음할 내용이 아예 없는 문장이면 발음하지 않음
                 if (!cleanedText || cleanedText === '') return;
                 
                 const utterance = new SpeechSynthesisUtterance(cleanedText);
@@ -386,7 +391,6 @@
                 currentUtterance = utterance;
 
                 utterance.onend = () => {
-                    // 원본 텍스트를 파라미터로 넘겨 반복 실행
                     if (repeatCheckbox.checked && currentUtterance === utterance) {
                         speak(text, lang);
                     }
@@ -445,6 +449,7 @@
             enTextDisplay.classList.remove('hidden-text');
         });
 
+        // 학습 모드 영역 클릭 시 블라인드 해제 & 발음 듣기
         koTextDisplay.addEventListener('click', () => {
             if (currentIndex === -1) return; 
             koTextDisplay.classList.remove('hidden-text');
