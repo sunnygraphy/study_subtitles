@@ -1,0 +1,10 @@
+stop stt
+start stt
+
+next sentence - 다음 문장
+repeat - 반복  (repeat는 현재 문장의 영어 읽기를 무한 반복,  "반복"은 한글 읽어주기 무한 반복)
+stop reading (읽기 종료 이경우에는 한글 명령 없다)
+
+
+
+

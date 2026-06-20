@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>넷플릭스 스마트 자막 학습기</title>
     <style>
-        /* (스타일 부분은 변경사항 없음) */
         body {
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
             display: flex;
@@ -294,16 +293,14 @@
     </style>
 </head>
 <body>
-
     <h1>🎬 스마트폰 & PC 겸용 자막 학습기</h1>
-
-        <div id="file-loaders">
+    <div id="file-loaders">
         <div class="file-input-wrapper">
             <label for="subtitle-files">📂 자막 파일 (ko & en) 동시 선택</label>
             <input type="file" id="subtitle-files" accept=".srt,.txt" multiple style="padding: 20px; text-align: center; background-color: #e9ecef;">
         </div>
     </div>
-
+    
     <div id="selected-subtitle">
         <h2>학습 모드 화면</h2>
         <div id="ko-text">자막을 불러오신 후 아래 재생 버튼을 누르거나 목록을 클릭하세요.</div>
@@ -319,7 +316,7 @@
                 <input type="range" id="en-speed" min="0.5" max="2.0" step="0.1" value="1.0">
             </div>
         </div>
-
+        
         <div id="controls">
              <button id="ko-speak-btn">▶️ 한국어 재생 / 다음</button>
              <button id="en-speak-btn">▶️ 영어 재생 / 다음</button>
@@ -342,7 +339,7 @@
     </div>
 
     <script>
-                const subtitleFilesInput = document.getElementById('subtitle-files');
+        const subtitleFilesInput = document.getElementById('subtitle-files');
         const subtitleList = document.getElementById('subtitle-list');
         const koTextDisplay = document.getElementById('ko-text');
         const enTextDisplay = document.getElementById('en-text');
@@ -362,6 +359,7 @@
         let currentUtterance = null;
         let currentIndex = -1;
         let isStudying = false; 
+        let infiniteRepeatMode = null; // 'ko', 'en', 또는 null (무한 반복 상태 추적)
         
         let currentFileKey = null;
 
@@ -451,16 +449,13 @@
                     isStudying = true; 
                     
                     saveProgress(currentIndex);
-
                     document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
                     scrollListToActive();
-
                     koTextDisplay.textContent = sub.ko || '(내용 없음)';
                     enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
                     
                     const isEnglishClicked = event.target.closest('.subtitle-en');
-
                     if (isEnglishClicked) {
                         enTextDisplay.classList.remove('hidden-text');
                         if (sub.ko) koTextDisplay.classList.add('hidden-text');
@@ -480,10 +475,9 @@
             });
         }
 
-                async function handleFileSelect(event) {
+        async function handleFileSelect(event) {
             const files = event.target.files;
             if (files.length < 1) return;
-
             let koFile = null;
             let enFile = null;
 
@@ -504,9 +498,7 @@
         }
 
         async function loadAndProcessFiles(koFile, enFile) {
-            
             currentFileKey = `subtitle_progress_${enFile.name}_${enFile.size}_${koFile.name}_${koFile.size}`;
-            
             subtitleList.innerHTML = `<p class="info-msg">⚙️ 파일 분석 및 매칭 중...</p>`;
             try {
                 const enText = await enFile.text();
@@ -521,7 +513,6 @@
                     if (currentIndex >= 0 && currentIndex < mergedSubtitles.length) {
                         saveStatus.textContent = '🔄 이전 학습 위치를 불러왔습니다';
                         setTimeout(() => { saveStatus.textContent = ''; }, 3000);
-
                         const activeItem = subtitleList.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
                         if (activeItem) activeItem.classList.add('active');
                         
@@ -530,7 +521,6 @@
                         enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
                         koTextDisplay.classList.remove('hidden-text');
                         enTextDisplay.classList.remove('hidden-text');
-
                         setTimeout(() => scrollListToActive(), 150);
                     } else {
                         currentIndex = -1;
@@ -538,42 +528,38 @@
                 } else {
                     currentIndex = -1;
                 }
-
             } catch (error) {
                 console.error(error);
                 subtitleList.innerHTML = `<p class="info-msg" style="color: #dc3545;">파일 해석 에러가 발생했습니다.</p>`;
             }
         }
 
-                subtitleFilesInput.addEventListener('change', handleFileSelect);
+        subtitleFilesInput.addEventListener('change', handleFileSelect);
 
         function cleanTextForSpeech(text) {
             if (!text) return '';
             let cleaned = text;
             cleaned = cleaned.replace(/\[.*?\]/g, ' '); 
-            cleaned = cleaned.replace(/\(.*?\) /g, ' '); 
+            cleaned = cleaned.replace(/\(.*?\)/g, ' '); 
             cleaned = cleaned.replace(/[-~*♪♫]/g, ' '); 
             cleaned = cleaned.replace(/^[가-힣A-Za-z0-9\s]+:/gm, ' '); 
             return cleaned.replace(/\s+/g, ' ').trim();
         }
 
-        // [최종 수정] speak 함수
+        // [수정 완료] 음성 인식을 방해하는 모든 정지 로직 제거
         function speak(text, lang) {
-            // 음성 인식을 잠시 멈춤
-            if (typeof stopVoiceRecognitionTemporarily === 'function') {
-                stopVoiceRecognitionTemporarily();
+            synth.cancel(); // 이전 재생이 있다면 중지
+            
+            // [추가] 문장을 읽을 때 무조건 해당 언어의 텍스트 숨김(hide) 해제
+            if (lang === 'ko-KR') {
+                koTextDisplay.classList.remove('hidden-text');
+            } else {
+                enTextDisplay.classList.remove('hidden-text');
             }
-
-            synth.cancel();
+            
             setTimeout(() => {
                 const cleanedText = cleanTextForSpeech(text);
-                if (!cleanedText) {
-                    // 읽을 텍스트가 없으면 즉시 음성 인식 재개
-                    if (typeof resumeVoiceRecognition === 'function') {
-                        resumeVoiceRecognition();
-                    }
-                    return;
-                }
+                if (!cleanedText) return;
                 
                 const utterance = new SpeechSynthesisUtterance(cleanedText);
                 utterance.lang = lang;
@@ -586,16 +572,18 @@
 
                 currentUtterance = utterance;
 
-                // 음성 재생이 끝나면 호출
                 utterance.onend = () => {
                     currentUtterance = null;
-                    if (repeatCheckbox.checked) {
-                        speak(text, lang); // 반복 옵션이 켜져있으면 다시 말하기 (음성인식은 재개하지 않음)
-                    } else {
-                        // 반복이 아니면 음성 인식을 다시 시작
-                        if (typeof resumeVoiceRecognition === 'function') {
-                            resumeVoiceRecognition();
-                        }
+                    
+                    // 무한 반복 모드 처리 (음성 명령)
+                    if (infiniteRepeatMode === 'ko' && lang === 'ko-KR') {
+                        speak(text, lang);
+                    } else if (infiniteRepeatMode === 'en' && lang === 'en-US') {
+                        speak(text, lang);
+                    } 
+                    // 기존 한 줄 반복 체크박스 처리
+                    else if (repeatCheckbox.checked) {
+                        speak(text, lang);
                     }
                 };
                 
@@ -606,15 +594,30 @@
         function stopAudio() {
             synth.cancel();
             currentUtterance = null;
-            // 수동 정지 시에도 음성 인식 재개
-            if (typeof resumeVoiceRecognition === 'function') {
-                resumeVoiceRecognition();
+            infiniteRepeatMode = null; // 정지 시 무한 반복 모드 해제
+        }
+
+        // --- STT 명령어를 위한 무한 반복 제어 함수 ---
+        function startInfiniteRepeat(mode) {
+            if (currentIndex === -1 || mergedSubtitles.length === 0) return;
+            
+            infiniteRepeatMode = mode;
+            const sub = mergedSubtitles[currentIndex];
+            
+            if (mode === 'ko' && sub.ko) {
+                speak(sub.ko, 'ko-KR');
+            } else if (mode === 'en' && sub.en) {
+                speak(sub.en, 'en-US');
             }
+        }
+
+        function stopInfiniteRepeat() {
+            stopAudio();
+            console.log("무한 반복이 중지되었습니다.");
         }
 
         function playCurrentOrNext(mode) {
             if (mergedSubtitles.length === 0) return;
-
             if (!isStudying) {
                 currentIndex = 0;
             } else {
@@ -622,32 +625,26 @@
                 if (currentIndex >= mergedSubtitles.length) {
                     currentIndex = mergedSubtitles.length - 1; 
                     alert("마지막 문장입니다.");
-                    // 마지막 문장이라 재생을 못했으므로, 음성 인식 즉시 재개
-                    if (typeof resumeVoiceRecognition === 'function') {
-                        resumeVoiceRecognition();
-                    }
                     return; 
                 }
             }
             
             isStudying = true; 
             saveProgress(currentIndex);
-
             const sub = mergedSubtitles[currentIndex];
-
+            
             document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
             const activeItem = document.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
             if (activeItem) {
                 activeItem.classList.add('active');
             }
-
             scrollListToActive();
-
+            
             koTextDisplay.textContent = sub.ko || '(내용 없음)';
             enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
             koTextDisplay.classList.remove('hidden-text');
             enTextDisplay.classList.remove('hidden-text');
-
+            
             if (mode === 'ko') {
                 if(sub.en) enTextDisplay.classList.add('hidden-text');
                 speak(sub.ko, 'ko-KR');
@@ -679,7 +676,6 @@
             const text = mergedSubtitles[currentIndex]?.en;
             if(text) speak(text, 'en-US');
         });
-
     </script>
     
     <script src="stt.js"></script>

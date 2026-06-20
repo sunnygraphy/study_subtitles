@@ -68,19 +68,14 @@ if (!SpeechRecognition) {
     
     // [수정] onend 로직 단순화
     recognition.onend = () => {
-        console.log("음성 인식이 중단되었습니다.");
         isListening = false;
+        console.log("음성 인식이 중단되었습니다.");
         
-        if (userManuallyStopped) {
-            console.log("사용자에 의해 STT가 꺼진 상태를 유지합니다.");
-            updateVoiceButtonUI();
+        // 사용자가 직접 끈 것이 아니라면, 다시 듣기 모드로 전환
+        if (!userManuallyStopped) {
+            recognition.start();
         } else {
-            // TTS 재생이나 다른 이유로 잠시 멈춘 경우, 다시 시작
-            try {
-                recognition.start();
-            } catch(e) {
-                // 이미 시작된 경우의 에러는 무시
-            }
+            updateVoiceButtonUI(); // '끄기' 상태로 UI 업데이트
         }
     };
 
@@ -100,17 +95,16 @@ function toggleVoiceCommand() {
     if (!recognition) return;
 
     if (isListening) {
-        userManuallyStopped = true;
+        userManuallyStopped = true; // 사용자가 직접 끔
         recognition.stop();
     } else {
-        userManuallyStopped = false;
+        userManuallyStopped = false; // 사용자가 켬
         try {
             recognition.start();
         } catch(e) {
             console.error("음성 인식을 시작할 수 없습니다:", e);
         }
     }
-    updateVoiceButtonUI();
 }
 
 // TTS 재생 시 음성 인식 잠시 중단
@@ -132,9 +126,8 @@ function resumeVoiceRecognition() {
 function updateVoiceButtonUI() {
     const btn = document.getElementById('voiceCommandBtn');
     if (btn) {
-        const isActuallyListening = isListening && !userManuallyStopped;
-        btn.textContent = isActuallyListening ? "🛑 음성 명령 끄기" : "🎙️ 음성 명령 켜기";
-        if(isActuallyListening) {
+        btn.textContent = isListening ? "🛑 음성 명령 끄기" : "🎙️ 음성 명령 켜기";
+        if(isListening) {
             btn.classList.add('listening');
         } else {
             btn.classList.remove('listening');
