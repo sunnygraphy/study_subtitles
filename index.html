@@ -360,6 +360,7 @@
         let currentIndex = -1;
         let isStudying = false; 
         let infiniteRepeatMode = null; // 'ko', 'en', 또는 null (무한 반복 상태 추적)
+        let repeatTimeoutId = null; // [추가] 3초 반복을 위한 타임아웃 ID
         
         let currentFileKey = null;
 
@@ -546,11 +547,13 @@
             return cleaned.replace(/\s+/g, ' ').trim();
         }
 
-        // [수정 완료] 음성 인식을 방해하는 모든 정지 로직 제거
         function speak(text, lang) {
-            synth.cancel(); // 이전 재생이 있다면 중지
-            
-            // [추가] 문장을 읽을 때 무조건 해당 언어의 텍스트 숨김(hide) 해제
+            if (typeof stopVoiceRecognitionTemporarily === 'function') {
+                stopVoiceRecognitionTemporarily();
+            }
+
+            synth.cancel(); 
+
             if (lang === 'ko-KR') {
                 koTextDisplay.classList.remove('hidden-text');
             } else {
@@ -559,7 +562,12 @@
             
             setTimeout(() => {
                 const cleanedText = cleanTextForSpeech(text);
-                if (!cleanedText) return;
+                if (!cleanedText) {
+                    if (typeof resumeVoiceRecognition === 'function') {
+                        resumeVoiceRecognition();
+                    }
+                    return;
+                }
                 
                 const utterance = new SpeechSynthesisUtterance(cleanedText);
                 utterance.lang = lang;
@@ -575,15 +583,22 @@
                 utterance.onend = () => {
                     currentUtterance = null;
                     
-                    // 무한 반복 모드 처리 (음성 명령)
-                    if (infiniteRepeatMode === 'ko' && lang === 'ko-KR') {
-                        speak(text, lang);
-                    } else if (infiniteRepeatMode === 'en' && lang === 'en-US') {
-                        speak(text, lang);
-                    } 
-                    // 기존 한 줄 반복 체크박스 처리
-                    else if (repeatCheckbox.checked) {
-                        speak(text, lang);
+                    if (typeof resumeVoiceRecognition === 'function') {
+                        resumeVoiceRecognition();
+                    }
+
+                    const isRepeating = (infiniteRepeatMode !== null) || repeatCheckbox.checked;
+
+                    if (isRepeating) {
+                         if ((infiniteRepeatMode === 'ko' && lang === 'ko-KR') || (infiniteRepeatMode === 'en' && lang === 'en-US')) {
+                            console.log("🔁 3초 후 반복 (이제 음성 명령 가능)");
+                            repeatTimeoutId = setTimeout(() => {
+                                speak(text, lang);
+                                repeatTimeoutId = null;
+                            }, 3000);
+                        } else if (repeatCheckbox.checked) { 
+                            speak(text, lang);
+                        }
                     }
                 };
                 
@@ -592,9 +607,13 @@
         }
 
         function stopAudio() {
+            if (repeatTimeoutId) {
+                clearTimeout(repeatTimeoutId);
+                repeatTimeoutId = null;
+            }
             synth.cancel();
             currentUtterance = null;
-            infiniteRepeatMode = null; // 정지 시 무한 반복 모드 해제
+            infiniteRepeatMode = null; 
         }
 
         // --- STT 명령어를 위한 무한 반복 제어 함수 ---
@@ -611,7 +630,7 @@
             }
         }
 
-                function stopInfiniteRepeat() {
+        function stopInfiniteRepeat() {
             stopAudio();
             console.log("무한 반복이 중지되었습니다.");
         }
@@ -672,7 +691,7 @@
             }
         }
 
-                function playPrevious(mode) {
+        function playPrevious(mode) {
             if (mergedSubtitles.length === 0) return;
 
             infiniteRepeatMode = null; // 이전으로 갈 때도 무한 반복 모드 해제

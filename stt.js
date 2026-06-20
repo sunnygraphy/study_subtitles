@@ -5,6 +5,7 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 let recognition;
 let isListening = false;
 let userManuallyStopped = false; // 사용자가 직접 껐는지 확인하는 플래그
+let isTemporarilyIgnoring = false; // TTS 재생 중에 STT 결과를 무시하기 위한 플래그
 
 if (!SpeechRecognition) {
     console.error("이 브라우저는 음성 인식을 지원하지 않습니다. 크롬 브라우저 사용을 권장합니다.");
@@ -16,11 +17,15 @@ if (!SpeechRecognition) {
 } else {
     recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-    recognition.continuous = false; // [수정] 한 번의 명령어를 인식하면 자동으로 종료되도록 변경
+        recognition.continuous = true;  // [수정] 계속 켜져 있도록 변경
     recognition.interimResults = false;
 
     // 2. 음성 인식 결과 처리
-    recognition.onresult = (event) => {
+        recognition.onresult = (event) => {
+        if (isTemporarilyIgnoring) {
+            console.log("🔇 TTS 재생 중... STT 결과 무시");
+            return; // 무시 모드일 경우, 아무 처리도 하지 않음
+        }
         const lastResultIndex = event.results.length - 1;
         let command = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
         
@@ -86,18 +91,18 @@ if (!SpeechRecognition) {
     recognition.onend = () => {
         console.log("음성 인식이 중단되었습니다.");
         isListening = false;
-        
-        if (userManuallyStopped) {
-            console.log("사용자에 의해 STT가 꺼진 상태를 유지합니다.");
-            updateVoiceButtonUI();
-        } else {
-            // TTS 재생이나 다른 이유로 잠시 멈춘 경우, 다시 시작
+
+        // 사용자가 직접 껐거나, 권한 문제, 네트워크 오류 등이 아니면 다시 시작
+        if (!userManuallyStopped) {
+            console.log("STT 세션이 만료되어 재시작합니다.");
             try {
-                recognition.start();
-            } catch(e) {
-                // 이미 시작된 경우의 에러는 무시
+                // 잠시 후 재시작하여 너무 잦은 재시작 및 '띵' 소리 방지
+                setTimeout(() => recognition.start(), 250);
+            } catch (e) {
+                console.error("STT 재시작 실패:", e);
             }
         }
+        updateVoiceButtonUI();
     };
 
     recognition.onerror = (event) => {
@@ -129,20 +134,16 @@ function toggleVoiceCommand() {
     updateVoiceButtonUI();
 }
 
-// TTS 재생 시 음성 인식 잠시 중단
+// TTS 재생 시 음성 인식 결과 처리를 잠시 무시
 function stopVoiceRecognitionTemporarily() {
-    if (isListening) {
-        userManuallyStopped = true; // 재시작을 막기 위해 일시적으로 플래그 설정
-        recognition.stop();
-    }
+    console.log("🤫 STT 무시 모드 시작");
+    isTemporarilyIgnoring = true;
 }
 
-// TTS 재생 종료 후 음성 인식 재개
+// TTS 재생 종료 후 음성 인식 결과 처리 재개
 function resumeVoiceRecognition() {
-    if (!isListening) {
-        userManuallyStopped = false; // 다시 자동 재시작이 가능하도록 플래그 복원
-        recognition.start();
-    }
+    console.log("🙂 STT 무시 모드 해제");
+    isTemporarilyIgnoring = false;
 }
 
 function updateVoiceButtonUI() {

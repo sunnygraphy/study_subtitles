@@ -360,6 +360,7 @@
         let currentIndex = -1;
         let isStudying = false; 
         let infiniteRepeatMode = null; // 'ko', 'en', 또는 null (무한 반복 상태 추적)
+        let repeatTimeoutId = null; // [추가] 3초 반복을 위한 타임아웃 ID
         
         let currentFileKey = null;
 
@@ -546,11 +547,13 @@
             return cleaned.replace(/\s+/g, ' ').trim();
         }
 
-        // [수정 완료] 음성 인식을 방해하는 모든 정지 로직 제거
         function speak(text, lang) {
-            synth.cancel(); // 이전 재생이 있다면 중지
-            
-            // [추가] 문장을 읽을 때 무조건 해당 언어의 텍스트 숨김(hide) 해제
+            if (typeof stopVoiceRecognitionTemporarily === 'function') {
+                stopVoiceRecognitionTemporarily();
+            }
+
+            synth.cancel(); 
+
             if (lang === 'ko-KR') {
                 koTextDisplay.classList.remove('hidden-text');
             } else {
@@ -559,7 +562,12 @@
             
             setTimeout(() => {
                 const cleanedText = cleanTextForSpeech(text);
-                if (!cleanedText) return;
+                if (!cleanedText) {
+                    if (typeof resumeVoiceRecognition === 'function') {
+                        resumeVoiceRecognition();
+                    }
+                    return;
+                }
                 
                 const utterance = new SpeechSynthesisUtterance(cleanedText);
                 utterance.lang = lang;
@@ -572,20 +580,30 @@
 
                 currentUtterance = utterance;
 
+                // ==========[여기부터 수정된 부분]==========
                 utterance.onend = () => {
                     currentUtterance = null;
                     
-                    // 무한 반복 모드 처리 (음성 명령)
-                    if (infiniteRepeatMode === 'ko' && lang === 'ko-KR') {
-                        speak(text, lang);
-                    } else if (infiniteRepeatMode === 'en' && lang === 'en-US') {
-                        speak(text, lang);
-                    } 
-                    // 기존 한 줄 반복 체크박스 처리
-                    else if (repeatCheckbox.checked) {
-                        speak(text, lang);
+                    // TTS 재생이 끝났으므로, STT가 사용자 명령을 들을 수 있도록 먼저 무시 모드를 해제합니다.
+                    if (typeof resumeVoiceRecognition === 'function') {
+                        resumeVoiceRecognition();
+                    }
+
+                    const isRepeating = (infiniteRepeatMode !== null) || repeatCheckbox.checked;
+
+                    if (isRepeating) {
+                         // 음성 명령(STT)으로 인한 무한 반복일 경우, 3초 후 다시 speak 함수를 호출합니다.
+                         if ((infiniteRepeatMode === 'ko' && lang === 'ko-KR') || (infiniteRepeatMode === 'en' && lang === 'en-US')) {
+                            console.log("🔁 3초 후 반복 (이제 음성 명령 가능)");
+                            // 3초 대기 후 speak()를 호출합니다. speak()는 시작 시점에 다시 STT 무시 모드를 설정합니다.
+                            setTimeout(() => speak(text, lang), 3000);
+                        } else if (repeatCheckbox.checked) { 
+                            // 체크박스를 통한 반복은 지연 없이 바로 다시 재생을 시작합니다.
+                            speak(text, lang);
+                        }
                     }
                 };
+                // ==========[여기까지 수정된 부분]==========
                 
                 synth.speak(utterance);
             }, 50); 
@@ -593,6 +611,7 @@
 
         function stopAudio() {
             synth.cancel();
+            clearTimeout(repeatTimeoutId); // [추가] 예약된 다음 반복을 취소합니다.
             currentUtterance = null;
             infiniteRepeatMode = null; // 정지 시 무한 반복 모드 해제
         }
@@ -614,6 +633,21 @@
         function stopInfiniteRepeat() {
             stopAudio();
             console.log("무한 반복이 중지되었습니다.");
+        }
+
+        // --- STT 명령어를 위한 현재 문장 다시 읽기 함수 ---
+        function readCurrent(mode) {
+            if (currentIndex === -1 || mergedSubtitles.length === 0) return;
+            
+            infiniteRepeatMode = null; // 현재 읽기가 반복되지 않도록 모드 해제
+            
+            const sub = mergedSubtitles[currentIndex];
+            
+            if (mode === 'ko' && sub.ko) {
+                speak(sub.ko, 'ko-KR');
+            } else if (mode === 'en' && sub.en) {
+                speak(sub.en, 'en-US');
+            }
         }
 
         function playCurrentOrNext(mode) {
@@ -657,7 +691,7 @@
             }
         }
 
-                function playPrevious(mode) {
+        function playPrevious(mode) {
             if (mergedSubtitles.length === 0) return;
 
             infiniteRepeatMode = null; // 이전으로 갈 때도 무한 반복 모드 해제
