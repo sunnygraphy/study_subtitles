@@ -580,11 +580,9 @@
 
                 currentUtterance = utterance;
 
-                // ==========[여기부터 수정된 부분]==========
                 utterance.onend = () => {
                     currentUtterance = null;
                     
-                    // TTS 재생이 끝났으므로, STT가 사용자 명령을 들을 수 있도록 먼저 무시 모드를 해제합니다.
                     if (typeof resumeVoiceRecognition === 'function') {
                         resumeVoiceRecognition();
                     }
@@ -592,28 +590,30 @@
                     const isRepeating = (infiniteRepeatMode !== null) || repeatCheckbox.checked;
 
                     if (isRepeating) {
-                         // 음성 명령(STT)으로 인한 무한 반복일 경우, 3초 후 다시 speak 함수를 호출합니다.
                          if ((infiniteRepeatMode === 'ko' && lang === 'ko-KR') || (infiniteRepeatMode === 'en' && lang === 'en-US')) {
                             console.log("🔁 3초 후 반복 (이제 음성 명령 가능)");
-                            // 3초 대기 후 speak()를 호출합니다. speak()는 시작 시점에 다시 STT 무시 모드를 설정합니다.
-                            setTimeout(() => speak(text, lang), 3000);
+                            repeatTimeoutId = setTimeout(() => {
+                                speak(text, lang);
+                                repeatTimeoutId = null;
+                            }, 3000);
                         } else if (repeatCheckbox.checked) { 
-                            // 체크박스를 통한 반복은 지연 없이 바로 다시 재생을 시작합니다.
                             speak(text, lang);
                         }
                     }
                 };
-                // ==========[여기까지 수정된 부분]==========
                 
                 synth.speak(utterance);
             }, 50); 
         }
 
         function stopAudio() {
+            if (repeatTimeoutId) {
+                clearTimeout(repeatTimeoutId);
+                repeatTimeoutId = null;
+            }
             synth.cancel();
-            clearTimeout(repeatTimeoutId); // [추가] 예약된 다음 반복을 취소합니다.
             currentUtterance = null;
-            infiniteRepeatMode = null; // 정지 시 무한 반복 모드 해제
+            infiniteRepeatMode = null; 
         }
 
         // --- STT 명령어를 위한 무한 반복 제어 함수 ---

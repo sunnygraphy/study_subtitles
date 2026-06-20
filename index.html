@@ -20,6 +20,94 @@
             margin: 15px 0;
             font-size: 1.6rem;
             text-align: center;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px;
+        }
+
+        #help-btn {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #007bff;
+            background-color: #e8f4fd;
+            border: 1px solid #007bff;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+            border: none;
+            background: none;
+        }
+        .modal-close-btn:hover {
+            color: #333;
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #007bff;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        .command-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .command-list li {
+            display: flex;
+            gap: 15px;
+            padding: 12px 5px;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .command-list li:last-child {
+            border-bottom: none;
+        }
+        .command-key {
+            font-weight: 600;
+            color: #dc3545;
+            flex-basis: 150px; /* 명령어 너비 고정 */
+            flex-shrink: 0; /* 줄어들지 않도록 설정 */
+            font-family: monospace;
+            font-size: 1rem;
+        }
+        .command-desc {
+            color: #495057;
         }
         #file-loaders, #selected-subtitle, #subtitle-container {
             width: 100%;
@@ -293,7 +381,30 @@
     </style>
 </head>
 <body>
-    <h1>🎬 스마트폰 & PC 겸용 자막 학습기</h1>
+    <h1>
+        <span>🎬 스마트폰 & PC 겸용 자막 학습기</span>
+        <button id="help-btn">?</button>
+    </h1>
+
+    <!-- Help Modal -->
+    <div id="help-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <button id="modal-close-btn" class="modal-close-btn">&times;</button>
+            <h3>🎙️ 음성 명령어 도움말</h3>
+            <ul class="command-list">
+                <li><span class="command-key">next</span><span class="command-desc">다음 영어 문장 재생</span></li>
+                <li><span class="command-key">next korean</span><span class="command-desc">다음 한국어 문장 재생</span></li>
+                <li><span class="command-key">previous</span><span class="command-desc">이전 영어 문장 재생</span></li>
+                <li><span class="command-key">previous korean</span><span class="command-desc">이전 한국어 문장 재생</span></li>
+                <li><span class="command-key">read</span><span class="command-desc">현재 영어 문장 다시 읽기</span></li>
+                <li><span class="command-key">read korean</span><span class="command-desc">현재 한국어 문장 다시 읽기</span></li>
+                <li><span class="command-key">repeat</span><span class="command-desc">현재 영어 문장 3초 간격으로 무한 반복</span></li>
+                <li><span class="command-key">repeat korean</span><span class="command-desc">현재 한국어 문장 3초 간격으로 무한 반복</span></li>
+                <li><span class="command-key">stop / stop reading</span><span class="command-desc">재생 및 반복 중지</span></li>
+                <li><span class="command-key">stop stt</span><span class="command-desc">음성 명령 기능 끄기</span></li>
+            </ul>
+        </div>
+    </div>
     <div id="file-loaders">
         <div class="file-input-wrapper">
             <label for="subtitle-files">📂 자막 파일 (ko & en) 동시 선택</label>
@@ -754,6 +865,25 @@
             enTextDisplay.classList.remove('hidden-text');
             const text = mergedSubtitles[currentIndex]?.en;
             if(text) speak(text, 'en-US');
+        });
+
+        // --- Help Modal Logic ---
+        const helpBtn = document.getElementById('help-btn');
+        const helpModal = document.getElementById('help-modal-overlay');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        helpBtn.addEventListener('click', () => {
+            helpModal.style.display = 'flex';
+        });
+
+        modalCloseBtn.addEventListener('click', () => {
+            helpModal.style.display = 'none';
+        });
+
+        helpModal.addEventListener('click', (event) => {
+            if (event.target === helpModal) { // Check if the click is on the overlay itself
+                helpModal.style.display = 'none';
+            }
         });
     </script>
     
