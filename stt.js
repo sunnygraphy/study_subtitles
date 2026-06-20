@@ -32,9 +32,17 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 영어 다음 문장");
             playCurrentOrNext('en');
         } 
-        else if (command === "다음") {
+                else if (command === "다음") {
             console.log("👉 실행: 한국어 다음 문장");
             playCurrentOrNext('ko');
+        } 
+        else if (command === "previous" || command === "프리비어스") {
+            console.log("👉 실행: 영어 이전 문장");
+            playPrevious('en');
+        } 
+        else if (command === "이전") {
+            console.log("👉 실행: 한국어 이전 문장");
+            playPrevious('ko');
         }
         // --- 새로 추가된 명령어 ---
         else if (command === "stop stt") {

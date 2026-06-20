@@ -1,10 +1,19 @@
 [
   {
+    "target_file": "stt.js",
+    "patches": [
+      {
+        "old_code": "else if (command === \"다음\") {\n            console.log(\"👉 실행: 한국어 다음 문장\");\n            playCurrentOrNext('ko');\n        }",
+        "new_code": "        else if (command === \"다음\") {\n            console.log(\"👉 실행: 한국어 다음 문장\");\n            playCurrentOrNext('ko');\n        } \n        else if (command === \"previous\" || command === \"프리비어스\") {\n            console.log(\"👉 실행: 영어 이전 문장\");\n            playPrevious('en');\n        } \n        else if (command === \"이전\") {\n            console.log(\"👉 실행: 한국어 이전 문장\");\n            playPrevious('ko');\n        }"
+      }
+    ]
+  },
+  {
     "target_file": "index.html",
     "patches": [
       {
-        "old_code": "        function playCurrentOrNext(mode) {\n            if (mergedSubtitles.length === 0) return;\n            if (!isStudying) {",
-        "new_code": "        function playCurrentOrNext(mode) {\n            if (mergedSubtitles.length === 0) return;\n            \n            infiniteRepeatMode = null; // [추가] 다음 문장으로 넘어갈 때 무한 반복 모드 초기화\n            \n            if (!isStudying) {"
+        "old_code": "koSpeakBtn.addEventListener('click', () => playCurrentOrNext('ko'));",
+        "new_code": "        function playPrevious(mode) {\n            if (mergedSubtitles.length === 0) return;\n\n            infiniteRepeatMode = null; // 이전으로 갈 때도 무한 반복 모드 해제\n\n            if (currentIndex <= 0) {\n                currentIndex = 0;\n                alert(\"첫 번째 문장입니다.\");\n                if (typeof resumeVoiceRecognition === 'function') { // 음성 명령으로 호출된 경우를 위해\n                    resumeVoiceRecognition();\n                }\n                return;\n            }\n\n            currentIndex--;\n            isStudying = true; \n            saveProgress(currentIndex);\n\n            const sub = mergedSubtitles[currentIndex];\n\n            document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));\n            const activeItem = document.querySelector(`.subtitle-item[data-index=\"${currentIndex}\"]`);\n            if (activeItem) {\n                activeItem.classList.add('active');\n            }\n\n            scrollListToActive();\n\n            koTextDisplay.textContent = sub.ko || '(내용 없음)';\n            enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';\n            koTextDisplay.classList.remove('hidden-text');\n            enTextDisplay.classList.remove('hidden-text');\n\n            if (mode === 'ko') {\n                if(sub.en) enTextDisplay.classList.add('hidden-text');\n                speak(sub.ko, 'ko-KR');\n            } else {\n                if(sub.ko) koTextDisplay.classList.add('hidden-text');\n                speak(sub.en, 'en-US');\n            }\n        }\n\n        koSpeakBtn.addEventListener('click', () => playCurrentOrNext('ko'));"
       }
     ]
   }

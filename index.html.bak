@@ -618,6 +618,9 @@
 
         function playCurrentOrNext(mode) {
             if (mergedSubtitles.length === 0) return;
+            
+            infiniteRepeatMode = null; // [추가] 다음 문장으로 넘어갈 때 무한 반복 모드 초기화
+            
             if (!isStudying) {
                 currentIndex = 0;
             } else {

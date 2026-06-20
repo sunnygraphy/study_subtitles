@@ -28,11 +28,11 @@ if (!SpeechRecognition) {
         console.log("🎤 인식된 명령어:", command);
 
         // --- 명령어 분기 ---
-        if (command === "next sentence" || command === "넥스트 센텐스") {
+        if (command === "next" || command === "넥스트") {
             console.log("👉 실행: 영어 다음 문장");
             playCurrentOrNext('en');
         } 
-        else if (command === "다음 문장") {
+        else if (command === "다음") {
             console.log("👉 실행: 한국어 다음 문장");
             playCurrentOrNext('ko');
         }
@@ -53,7 +53,7 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 한국어 무한 반복");
             startInfiniteRepeat('ko');
         }
-        else if (command === "stop reading" || command === "스탑 리딩") {
+        else if (command === "stop reading" || command === "stop" || command === "스탑 리딩") {
             console.log("👉 실행: 읽기(반복) 종료");
             stopInfiniteRepeat();
         }
@@ -68,14 +68,19 @@ if (!SpeechRecognition) {
     
     // [수정] onend 로직 단순화
     recognition.onend = () => {
-        isListening = false;
         console.log("음성 인식이 중단되었습니다.");
+        isListening = false;
         
-        // 사용자가 직접 끈 것이 아니라면, 다시 듣기 모드로 전환
-        if (!userManuallyStopped) {
-            recognition.start();
+        if (userManuallyStopped) {
+            console.log("사용자에 의해 STT가 꺼진 상태를 유지합니다.");
+            updateVoiceButtonUI();
         } else {
-            updateVoiceButtonUI(); // '끄기' 상태로 UI 업데이트
+            // TTS 재생이나 다른 이유로 잠시 멈춘 경우, 다시 시작
+            try {
+                recognition.start();
+            } catch(e) {
+                // 이미 시작된 경우의 에러는 무시
+            }
         }
     };
 
@@ -95,16 +100,17 @@ function toggleVoiceCommand() {
     if (!recognition) return;
 
     if (isListening) {
-        userManuallyStopped = true; // 사용자가 직접 끔
+        userManuallyStopped = true;
         recognition.stop();
     } else {
-        userManuallyStopped = false; // 사용자가 켬
+        userManuallyStopped = false;
         try {
             recognition.start();
         } catch(e) {
             console.error("음성 인식을 시작할 수 없습니다:", e);
         }
     }
+    updateVoiceButtonUI();
 }
 
 // TTS 재생 시 음성 인식 잠시 중단
@@ -126,8 +132,9 @@ function resumeVoiceRecognition() {
 function updateVoiceButtonUI() {
     const btn = document.getElementById('voiceCommandBtn');
     if (btn) {
-        btn.textContent = isListening ? "🛑 음성 명령 끄기" : "🎙️ 음성 명령 켜기";
-        if(isListening) {
+        const isActuallyListening = isListening && !userManuallyStopped;
+        btn.textContent = isActuallyListening ? "🛑 음성 명령 끄기" : "🎙️ 음성 명령 켜기";
+        if(isActuallyListening) {
             btn.classList.add('listening');
         } else {
             btn.classList.remove('listening');
