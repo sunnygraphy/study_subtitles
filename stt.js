@@ -15,7 +15,7 @@ if (!SpeechRecognition) {
     }
 } else {
     recognition = new SpeechRecognition();
-    recognition.lang = 'ko-KR';
+    recognition.lang = 'en-US';
     recognition.continuous = false; // [수정] 한 번의 명령어를 인식하면 자동으로 종료되도록 변경
     recognition.interimResults = false;
 
@@ -28,19 +28,19 @@ if (!SpeechRecognition) {
         console.log("🎤 인식된 명령어:", command);
 
         // --- 명령어 분기 ---
-        if (command === "next" || command === "넥스트") {
+        if (command === "next") {
             console.log("👉 실행: 영어 다음 문장");
             playCurrentOrNext('en');
         } 
-                else if (command === "다음") {
+                else if (command === "next korean") {
             console.log("👉 실행: 한국어 다음 문장");
             playCurrentOrNext('ko');
         } 
-        else if (command === "previous" || command === "프리비어스") {
+        else if (command === "previous") {
             console.log("👉 실행: 영어 이전 문장");
             playPrevious('en');
         } 
-        else if (command === "이전") {
+        else if (command === "previous korean") {
             console.log("👉 실행: 한국어 이전 문장");
             playPrevious('ko');
         }
@@ -53,23 +53,23 @@ if (!SpeechRecognition) {
             // 이미 켜져있어야 이 명령을 들을 수 있으므로 실질적으로는 상태 확인용
             console.log("👉 STT는 이미 켜져 있습니다.");
         }
-        else if (command === "repeat" || command === "리피트") {
+        else if (command === "repeat") {
             console.log("👉 실행: 영어 무한 반복");
             startInfiniteRepeat('en');
         }
-        else if (command === "반복") {
+        else if (command === "repeat the korean" || command === "repeat korean") {
             console.log("👉 실행: 한국어 무한 반복");
             startInfiniteRepeat('ko');
         }
-                else if (command === "stop reading" || command === "stop" || command === "스탑 리딩") {
+                else if (command === "stop reading" || command === "stop") {
             console.log("👉 실행: 읽기(반복) 종료");
             stopInfiniteRepeat();
         }
-        else if (command === "read" || command === "리드" || command==="current") {
+        else if (command === "read") {
             console.log("👉 실행: 현재 영어 문장 읽기");
             readCurrent('en');
         }
-        else if (command === "읽어" || command==="현재") {
+        else if (command === "read the korean" || command === "read korean") {
             console.log("👉 실행: 현재 한국어 문장 읽기");
             readCurrent('ko');
         }
