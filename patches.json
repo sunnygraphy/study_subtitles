@@ -3,12 +3,8 @@
     "target_file": "index.html",
     "patches": [
       {
-        "old_code": "const originalClean = original.toLowerCase().replace(/[.,!?]/g, '').trim();\n            const spokenClean = spoken.toLowerCase().replace(/[.,!?]/g, '').trim();",
-        "new_code": "// 따옴표(')를 포함한 다양한 기호를 제거하여 I'm과 Im의 차이로 점수가 깎이는 현상 방지\n            const originalClean = original.toLowerCase().replace(/[.,!?'\"‘’”“]/g, '').trim();\n            const spokenClean = spoken.toLowerCase().replace(/[.,!?'\"‘’”“]/g, '').trim();"
-      },
-      {
-        "old_code": "const diffHtml = createDiffHtml(original, spoken);",
-        "new_code": "// 시각적 차이를 보여줄 때도 문장 부호가 완벽히 제거된 텍스트를 사용하여 억울하게 틀린 것으로 표시되지 않게 수정\n            const diffHtml = createDiffHtml(originalClean, spokenClean);"
+        "old_code": "function cleanTextForSpeech(text) {\n            if (!text) return '';\n            let cleaned = text;\n            cleaned = cleaned.replace(/\\[.*?\\]/g, ' '); \n            cleaned = cleaned.replace(/\\(.*?\\)/g, ' '); \n            cleaned = cleaned.replace(/[-~*♪♫]/g, ' '); \n            cleaned = cleaned.replace(/^[가-힣A-Za-z0-9\\s]+:/gm, ' '); \n            return cleaned.replace(/\\s+/g, ' ').trim();\n        }",
+        "new_code": "function cleanTextForSpeech(text) {\n            if (!text) return '';\n            let cleaned = text;\n            // [수정] TTS로 읽기 전, 그리고 '원본' 문장으로 사용되기 전에 모든 문장 부호와 특수 기호를 제거합니다.\n            cleaned = cleaned.replace(/[.,!?'\"‘’”“]/g, ' '); // 마침표, 쉼표, 따옴표 등 제거\n            cleaned = cleaned.replace(/\\[.*?\\]/g, ' ');      // [대괄호] 내용 제거\n            cleaned = cleaned.replace(/\\(.*?\\)/g, ' ');      // (소괄호) 내용 제거\n            cleaned = cleaned.replace(/[-~*♪♫]/g, ' ');      // 특수기호 제거\n            cleaned = cleaned.replace(/^[가-힣A-Za-z0-9\\s]+:/gm, ' '); // \"이름:\" 같은 형식 제거\n            return cleaned.replace(/\\s+/g, ' ').trim();     // 여러 공백을 하나로 합치고 앞뒤 공백 제거\n        }"
       }
     ]
   }

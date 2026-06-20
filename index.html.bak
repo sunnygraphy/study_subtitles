@@ -780,8 +780,9 @@
                 practiceTimeoutId = null;
             }
 
-            const originalClean = original.toLowerCase().replace(/[.,!?]/g, '').trim();
-            const spokenClean = spoken.toLowerCase().replace(/[.,!?]/g, '').trim();
+            // 따옴표(')를 포함한 다양한 기호를 제거하여 I'm과 Im의 차이로 점수가 깎이는 현상 방지
+            const originalClean = original.toLowerCase().replace(/[.,!?'"‘’”“]/g, '').trim();
+            const spokenClean = spoken.toLowerCase().replace(/[.,!?'"‘’”“]/g, '').trim();
 
             const originalWords = originalClean.split(/\s+/).filter(Boolean);
             const spokenWords = spokenClean.split(/\s+/).filter(Boolean);
@@ -810,7 +811,8 @@
                 }
             }
             
-            const diffHtml = createDiffHtml(original, spoken);
+            // 시각적 차이를 보여줄 때도 문장 부호가 완벽히 제거된 텍스트를 사용하여 억울하게 틀린 것으로 표시되지 않게 수정
+            const diffHtml = createDiffHtml(originalClean, spokenClean);
             pronunciationScoreDisplay.innerHTML = `<strong>유사도: ${similarity}%</strong><br><div style="margin-top: 8px; font-weight: normal; font-size: 1.1em; line-height: 1.6;">${diffHtml}</div>`;
             
             pronunciationScoreDisplay.classList.remove('good', 'medium', 'bad');

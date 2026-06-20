@@ -86,7 +86,7 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 읽기(반복) 종료");
             stopInfiniteRepeat();
         }
-        else if (command === "read") {
+        else if (command === "read" || command === "read it" || command === "r e a d") {
             console.log("👉 실행: 현재 영어 문장 읽기");
             readCurrent('en');
         }
