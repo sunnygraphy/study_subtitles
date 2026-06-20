@@ -101,14 +101,15 @@
         .command-key {
             font-weight: 600;
             color: #dc3545;
-            flex-basis: 150px; /* 명령어 너비 고정 */
-            flex-shrink: 0; /* 줄어들지 않도록 설정 */
+            flex-basis: 150px;
+            flex-shrink: 0;
             font-family: monospace;
             font-size: 1rem;
         }
         .command-desc {
             color: #495057;
         }
+
         #file-loaders, #selected-subtitle, #subtitle-container {
             width: 100%;
             max-width: 900px;
@@ -186,6 +187,21 @@
             color: #0056b3;
             border-left: 5px solid #007bff;
         }
+        
+        /* 발음 평가 점수 스타일 */
+        .score-display {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            min-height: 20px;
+            transition: all 0.3s ease;
+        }
+        .score-display.good { color: #28a745; background-color: #e9f7ef; }
+        .score-display.medium { color: #ffc107; background-color: #fff8e1; }
+        .score-display.bad { color: #dc3545; background-color: #fdeded; }
+
         .hidden-text {
             background-color: #dee2e6 !important;
             color: transparent !important;
@@ -405,6 +421,7 @@
             </ul>
         </div>
     </div>
+
     <div id="file-loaders">
         <div class="file-input-wrapper">
             <label for="subtitle-files">📂 자막 파일 (ko & en) 동시 선택</label>
@@ -416,6 +433,7 @@
         <h2>학습 모드 화면</h2>
         <div id="ko-text">자막을 불러오신 후 아래 재생 버튼을 누르거나 목록을 클릭하세요.</div>
         <div id="en-text">The English subtitle will be displayed here.</div>
+        <div id="pronunciation-score" class="score-display"></div> <!-- 발음 평가 점수판 -->
         
         <div id="speed-controls">
             <div class="speed-slider">
@@ -454,6 +472,7 @@
         const subtitleList = document.getElementById('subtitle-list');
         const koTextDisplay = document.getElementById('ko-text');
         const enTextDisplay = document.getElementById('en-text');
+        const pronunciationScoreDisplay = document.getElementById('pronunciation-score'); 
         const koSpeakBtn = document.getElementById('ko-speak-btn');
         const enSpeakBtn = document.getElementById('en-speak-btn');
         const repeatCheckbox = document.getElementById('repeat-checkbox');
@@ -465,15 +484,31 @@
         const koSpeedVal = document.getElementById('ko-speed-val');
         const enSpeedVal = document.getElementById('en-speed-val');
 
+        // 모달창 요소
+        const helpBtn = document.getElementById('help-btn');
+        const helpModal = document.getElementById('help-modal-overlay');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
         let mergedSubtitles = [];
         const synth = window.speechSynthesis;
         let currentUtterance = null;
         let currentIndex = -1;
         let isStudying = false; 
-        let infiniteRepeatMode = null; // 'ko', 'en', 또는 null (무한 반복 상태 추적)
-        let repeatTimeoutId = null; // [추가] 3초 반복을 위한 타임아웃 ID
+        
+        // 반복 & 발음 연습 관련 상태 변수
+        let infiniteRepeatMode = null; 
+        let repeatTimeoutId = null; 
+        let practiceSentence = null; 
+        let practiceTimeoutId = null; // ✨ 발음 연습 타임아웃 ID
         
         let currentFileKey = null;
+
+        // 모달창 이벤트 처리
+        helpBtn.addEventListener('click', () => { helpModal.style.display = 'flex'; });
+        modalCloseBtn.addEventListener('click', () => { helpModal.style.display = 'none'; });
+        helpModal.addEventListener('click', (event) => {
+            if (event.target === helpModal) { helpModal.style.display = 'none'; }
+        });
 
         koSpeedInput.addEventListener('input', () => {
             koSpeedVal.textContent = parseFloat(koSpeedInput.value).toFixed(1);
@@ -543,7 +578,6 @@
                 subtitleList.innerHTML = `<p class="info-msg">싱크가 일치하는 자막 데이터가 없습니다.</p>`;
                 return;
             }
-
             mergedSubtitles.forEach((sub, index) => {
                 const item = document.createElement('div');
                 item.className = 'subtitle-item';
@@ -592,7 +626,6 @@
             if (files.length < 1) return;
             let koFile = null;
             let enFile = null;
-
             for (const file of files) {
                 const fileName = file.name.toLowerCase();
                 if (fileName.includes('.ko.srt') || fileName.includes('.ko.txt')) {
@@ -601,7 +634,6 @@
                     enFile = file;
                 }
             }
-
             if (koFile && enFile) {
                 await loadAndProcessFiles(koFile, enFile);
             } else {
@@ -617,7 +649,6 @@
                 const koText = await koFile.text();
                 mergedSubtitles = mergeSubtitles(parseSrt(koText), parseSrt(enText));
                 displaySubtitles();
-
                 const savedIndex = localStorage.getItem(currentFileKey);
                 if (savedIndex !== null) {
                     currentIndex = parseInt(savedIndex, 10);
@@ -658,7 +689,64 @@
             return cleaned.replace(/\s+/g, ' ').trim();
         }
 
+        // 레벤슈타인 거리 계산 함수 (유사도 측정용)
+        function getLevenshteinDistance(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        // 점수 표시 함수 (stt.js에서 호출됨)
+        function displayPronunciationScore(original, spoken) {
+            // ✨ 발음이 감지되었으므로, 타임아웃 타이머는 취소
+            if (practiceTimeoutId) {
+                clearTimeout(practiceTimeoutId);
+                practiceTimeoutId = null;
+            }
+
+            const distance = getLevenshteinDistance(original.toLowerCase(), spoken.toLowerCase());
+            const longerLength = Math.max(original.length, spoken.length);
+            const similarity = Math.round((1 - distance / longerLength) * 100);
+            
+            pronunciationScoreDisplay.innerHTML = `<strong>유사도: ${similarity}%</strong><br><small>(원본: ${original} / 내 발음: ${spoken})</small>`;
+            
+            pronunciationScoreDisplay.classList.remove('good', 'medium', 'bad');
+            if (similarity >= 85) {
+                pronunciationScoreDisplay.classList.add('good');
+            } else if (similarity >= 60) {
+                pronunciationScoreDisplay.classList.add('medium');
+            } else {
+                pronunciationScoreDisplay.classList.add('bad');
+            }
+
+            // 잠시 후 다시 명령어 인식 모드로 전환 (명령을 받을 수 있게)
+            setTimeout(() => {
+                if(typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
+            }, 1000); 
+        }
+
         function speak(text, lang) {
+            // 발음 연습 상태 초기화
+            practiceSentence = null;
+            pronunciationScoreDisplay.innerHTML = '';
+            pronunciationScoreDisplay.className = 'score-display';
+
             if (typeof stopVoiceRecognitionTemporarily === 'function') {
                 stopVoiceRecognitionTemporarily();
             }
@@ -694,13 +782,12 @@
                 utterance.onend = () => {
                     currentUtterance = null;
                     
-                    if (typeof resumeVoiceRecognition === 'function') {
-                        resumeVoiceRecognition();
-                    }
-
                     const isRepeating = (infiniteRepeatMode !== null) || repeatCheckbox.checked;
 
                     if (isRepeating) {
+                         // 무한 반복일 경우 STT 무시 모드 해제 후 3초 대기
+                         if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
+
                          if ((infiniteRepeatMode === 'ko' && lang === 'ko-KR') || (infiniteRepeatMode === 'en' && lang === 'en-US')) {
                             console.log("🔁 3초 후 반복 (이제 음성 명령 가능)");
                             repeatTimeoutId = setTimeout(() => {
@@ -710,6 +797,33 @@
                         } else if (repeatCheckbox.checked) { 
                             speak(text, lang);
                         }
+                    } else {
+                        // 무한 반복이 아니고 영어 문장일 때 발음 연습 모드 시작
+                        if (lang === 'en-US') {
+                            console.log("🗣️ 발음 연습 모드 시작. 따라 말해보세요...");
+                            practiceSentence = cleanedText; 
+                            pronunciationScoreDisplay.innerHTML = `이제 따라 말해보세요...`;
+                            
+                            // stt.js의 발음 인식 모드 진입 함수 호출
+                            if (typeof startPracticeMode === 'function') {
+                                startPracticeMode();
+                                
+                                // ✨ 7초 후에도 발음 연습 입력이 없으면 자동으로 일반 모드로 전환
+                                if (practiceTimeoutId) clearTimeout(practiceTimeoutId); // 이전 타이머 정리
+                                practiceTimeoutId = setTimeout(() => {
+                                    console.log("⏰ 발음 연습 시간 초과. 일반 명령 모드로 전환합니다.");
+                                    pronunciationScoreDisplay.innerHTML = '';
+                                    // stt.js의 resume 함수를 호출하여 isPracticeMode를 false로 만듦
+                                    if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
+                                    practiceTimeoutId = null;
+                                }, 7000); // 7초 대기
+
+                            } else {
+                                if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
+                            }
+                        } else {
+                            if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
+                        }
                     }
                 };
                 
@@ -718,16 +832,30 @@
         }
 
         function stopAudio() {
+            // 예약된 다음 반복을 확실하게 취소
             if (repeatTimeoutId) {
                 clearTimeout(repeatTimeoutId);
                 repeatTimeoutId = null;
             }
+            // ✨ 발음 연습 타임아웃 취소
+            if (practiceTimeoutId) {
+                clearTimeout(practiceTimeoutId);
+                practiceTimeoutId = null;
+            }
             synth.cancel();
             currentUtterance = null;
             infiniteRepeatMode = null; 
+            
+            // 발음 연습 모드도 함께 종료
+            practiceSentence = null;
+            pronunciationScoreDisplay.innerHTML = '';
+            pronunciationScoreDisplay.className = 'score-display';
+            
+            if (typeof resumeVoiceRecognition === 'function') {
+                resumeVoiceRecognition();
+            }
         }
 
-        // --- STT 명령어를 위한 무한 반복 제어 함수 ---
         function startInfiniteRepeat(mode) {
             if (currentIndex === -1 || mergedSubtitles.length === 0) return;
             
@@ -746,12 +874,9 @@
             console.log("무한 반복이 중지되었습니다.");
         }
 
-        // --- STT 명령어를 위한 현재 문장 다시 읽기 함수 ---
         function readCurrent(mode) {
             if (currentIndex === -1 || mergedSubtitles.length === 0) return;
-            
-            infiniteRepeatMode = null; // 현재 읽기가 반복되지 않도록 모드 해제
-            
+            infiniteRepeatMode = null; 
             const sub = mergedSubtitles[currentIndex];
             
             if (mode === 'ko' && sub.ko) {
@@ -763,8 +888,7 @@
 
         function playCurrentOrNext(mode) {
             if (mergedSubtitles.length === 0) return;
-            
-            infiniteRepeatMode = null; // [추가] 다음 문장으로 넘어갈 때 무한 반복 모드 초기화
+            infiniteRepeatMode = null; 
             
             if (!isStudying) {
                 currentIndex = 0;
@@ -804,37 +928,32 @@
 
         function playPrevious(mode) {
             if (mergedSubtitles.length === 0) return;
-
-            infiniteRepeatMode = null; // 이전으로 갈 때도 무한 반복 모드 해제
-
+            infiniteRepeatMode = null; 
+            
             if (currentIndex <= 0) {
                 currentIndex = 0;
                 alert("첫 번째 문장입니다.");
-                if (typeof resumeVoiceRecognition === 'function') { // 음성 명령으로 호출된 경우를 위해
+                if (typeof resumeVoiceRecognition === 'function') { 
                     resumeVoiceRecognition();
                 }
                 return;
             }
-
             currentIndex--;
             isStudying = true; 
             saveProgress(currentIndex);
-
             const sub = mergedSubtitles[currentIndex];
-
             document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
             const activeItem = document.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
             if (activeItem) {
                 activeItem.classList.add('active');
             }
-
             scrollListToActive();
-
+            
             koTextDisplay.textContent = sub.ko || '(내용 없음)';
             enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
             koTextDisplay.classList.remove('hidden-text');
             enTextDisplay.classList.remove('hidden-text');
-
+            
             if (mode === 'ko') {
                 if(sub.en) enTextDisplay.classList.add('hidden-text');
                 speak(sub.ko, 'ko-KR');
@@ -865,25 +984,6 @@
             enTextDisplay.classList.remove('hidden-text');
             const text = mergedSubtitles[currentIndex]?.en;
             if(text) speak(text, 'en-US');
-        });
-
-        // --- Help Modal Logic ---
-        const helpBtn = document.getElementById('help-btn');
-        const helpModal = document.getElementById('help-modal-overlay');
-        const modalCloseBtn = document.getElementById('modal-close-btn');
-
-        helpBtn.addEventListener('click', () => {
-            helpModal.style.display = 'flex';
-        });
-
-        modalCloseBtn.addEventListener('click', () => {
-            helpModal.style.display = 'none';
-        });
-
-        helpModal.addEventListener('click', (event) => {
-            if (event.target === helpModal) { // Check if the click is on the overlay itself
-                helpModal.style.display = 'none';
-            }
         });
     </script>
     

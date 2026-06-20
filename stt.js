@@ -1,4 +1,4 @@
-// stt.js (수정 최종본)
+// stt.js (수정 최종본 - 발음 연습 및 3초 대기 제어 기능 통합)
 
 // 1. 음성 인식 API 초기화
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -6,6 +6,7 @@ let recognition;
 let isListening = false;
 let userManuallyStopped = false; // 사용자가 직접 껐는지 확인하는 플래그
 let isTemporarilyIgnoring = false; // TTS 재생 중에 STT 결과를 무시하기 위한 플래그
+let isPracticeMode = false; // ✨ 발음 연습(따라 하기) 모드 플래그
 
 if (!SpeechRecognition) {
     console.error("이 브라우저는 음성 인식을 지원하지 않습니다. 크롬 브라우저 사용을 권장합니다.");
@@ -17,19 +18,34 @@ if (!SpeechRecognition) {
 } else {
     recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-        recognition.continuous = true;  // [수정] 계속 켜져 있도록 변경
+    recognition.continuous = true;  // 계속 켜져 있도록 설정
     recognition.interimResults = false;
 
     // 2. 음성 인식 결과 처리
-        recognition.onresult = (event) => {
+    recognition.onresult = (event) => {
         if (isTemporarilyIgnoring) {
             console.log("🔇 TTS 재생 중... STT 결과 무시");
-            return; // 무시 모드일 경우, 아무 처리도 하지 않음
+            return; // 무시 모드일 경우 아무 처리도 하지 않음
         }
+
         const lastResultIndex = event.results.length - 1;
-        let command = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
-        
-        command = command.replace(/[.,!?]/g, ""); 
+        let spokenText = event.results[lastResultIndex][0].transcript.trim();
+
+        // ✨ [발음 연습 모드]인 경우: 명령어로 처리하지 않고 발음 유사도 분석으로 분기
+        if (isPracticeMode) {
+            console.log("💬 사용자 따라하기 발음 감지:", spokenText);
+            // isPracticeMode = false; // ✨ 이제 displayPronunciationScore -> resumeVoiceRecognition에서 처리하므로 주석 처리
+            stopVoiceRecognitionTemporarily(); // 결과 표시 및 음성 피드백 중에는 잠시 STT 대기
+
+            // index.html의 발음 점수 표시 함수 호출
+            if (typeof displayPronunciationScore === 'function' && typeof practiceSentence === 'string') {
+                displayPronunciationScore(practiceSentence, spokenText);
+            }
+            return; // 일반 명령어 처리 로직을 실행하지 않고 건너뜁니다.
+        }
+
+        // --- 일반 명령어 처리 ---
+        let command = spokenText.toLowerCase().replace(/[.,!?]/g, ""); 
         console.log("🎤 인식된 명령어:", command);
 
         // --- 명령어 분기 ---
@@ -37,7 +53,7 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 영어 다음 문장");
             playCurrentOrNext('en');
         } 
-                else if (command === "next korean") {
+        else if (command === "next korean") {
             console.log("👉 실행: 한국어 다음 문장");
             playCurrentOrNext('ko');
         } 
@@ -49,13 +65,11 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 한국어 이전 문장");
             playPrevious('ko');
         }
-        // --- 새로 추가된 명령어 ---
         else if (command === "stop stt") {
             console.log("👉 실행: STT 종료");
             toggleVoiceCommand(); // 마이크 끄기
         }
         else if (command === "start stt") {
-            // 이미 켜져있어야 이 명령을 들을 수 있으므로 실질적으로는 상태 확인용
             console.log("👉 STT는 이미 켜져 있습니다.");
         }
         else if (command === "repeat") {
@@ -66,7 +80,7 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 한국어 무한 반복");
             startInfiniteRepeat('ko');
         }
-                else if (command === "stop reading" || command === "stop") {
+        else if (command === "stop reading" || command === "stop") {
             console.log("👉 실행: 읽기(반복) 종료");
             stopInfiniteRepeat();
         }
@@ -87,16 +101,14 @@ if (!SpeechRecognition) {
         updateVoiceButtonUI();
     };
     
-    // [수정] onend 로직 단순화
     recognition.onend = () => {
         console.log("음성 인식이 중단되었습니다.");
         isListening = false;
-
-        // 사용자가 직접 껐거나, 권한 문제, 네트워크 오류 등이 아니면 다시 시작
+        // 사용자가 직접 꺼서 종료된 것이 아니라면 비동기적으로 다시 자동 재시작
         if (!userManuallyStopped) {
             console.log("STT 세션이 만료되어 재시작합니다.");
             try {
-                // 잠시 후 재시작하여 너무 잦은 재시작 및 '띵' 소리 방지
+                // 너무 연속적인 재시작 시 발생하는 소음 방지를 위해 250ms의 여유를 둠
                 setTimeout(() => recognition.start(), 250);
             } catch (e) {
                 console.error("STT 재시작 실패:", e);
@@ -119,7 +131,6 @@ if (!SpeechRecognition) {
 // 4. UI 및 외부 제어 함수
 function toggleVoiceCommand() {
     if (!recognition) return;
-
     if (isListening) {
         userManuallyStopped = true;
         recognition.stop();
@@ -134,16 +145,24 @@ function toggleVoiceCommand() {
     updateVoiceButtonUI();
 }
 
-// TTS 재생 시 음성 인식 결과 처리를 잠시 무시
+// TTS 재생 시 음성 인식 결과 처리를 잠시 무시하는 모드
 function stopVoiceRecognitionTemporarily() {
     console.log("🤫 STT 무시 모드 시작");
     isTemporarilyIgnoring = true;
 }
 
-// TTS 재생 종료 후 음성 인식 결과 처리 재개
+// TTS 재생 종료 후 음성 인식 결과 처리 재개 (연습 모드도 함께 완전히 초기화)
 function resumeVoiceRecognition() {
-    console.log("🙂 STT 무시 모드 해제");
+    console.log("🙂 STT 무시 모드 해제 (명령어 대기 시작)");
     isTemporarilyIgnoring = false;
+    isPracticeMode = false; 
+}
+
+// ✨ [추가] 영어 TTS 출력 후 발음 연습을 들을 수 있도록 모드를 전환하는 함수
+function startPracticeMode() {
+    console.log("👂 발음 연습 인식 시작...");
+    isTemporarilyIgnoring = false; // STT가 들어야 하므로 무시 모드 해제
+    isPracticeMode = true; // 다음 음성 결과는 연습 분석으로 이동하도록 설정
 }
 
 function updateVoiceButtonUI() {
