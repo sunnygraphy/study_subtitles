@@ -724,7 +724,7 @@
             const longerLength = Math.max(original.length, spoken.length);
             const similarity = Math.round((1 - distance / longerLength) * 100);
             
-            pronunciationScoreDisplay.innerHTML = `<strong>유사도: ${similarity}%</strong><br><small>(원본: ${original} / 내 발음: ${spoken})</small>`;
+            pronunciationScoreDisplay.innerHTML = `<strong>유사도: ${similarity}%</strong><br><small>(내 발음: ${spoken})</small>`;
             
             pronunciationScoreDisplay.classList.remove('good', 'medium', 'bad');
             if (similarity >= 85) {
@@ -816,7 +816,7 @@
                                     // stt.js의 resume 함수를 호출하여 isPracticeMode를 false로 만듦
                                     if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
                                     practiceTimeoutId = null;
-                                }, 7000); // 7초 대기
+                                }, 10000); // 7초 대기
 
                             } else {
                                 if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
