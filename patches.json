@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "target_file": "index.html",
+    "patches": [
+      {
+        "old_code": "<div id=\"file-loaders\">\n        <div class=\"file-input-wrapper\">\n            <label for=\"en-file\">🔤 영어 자막 파일 (.srt / .txt)</label>\n            <input type=\"file\" id=\"en-file\" accept=\".srt,.txt\">\n        </div>\n        <div class=\"file-input-wrapper\">\n            <label for=\"ko-file\">🇰🇷 한국어 자막 파일 (.srt / .txt)</label>\n            <input type=\"file\" id=\"ko-file\" accept=\".srt,.txt\">\n        </div>\n    </div>",
+        "new_code": "    <div id=\"file-loaders\">\n        <div class=\"file-input-wrapper\">\n            <label for=\"subtitle-files\">📂 자막 파일 (ko & en) 동시 선택</label>\n            <input type=\"file\" id=\"subtitle-files\" accept=\".srt,.txt\" multiple style=\"padding: 20px; text-align: center; background-color: #e9ecef;\">\n        </div>\n    </div>"
+      },
+      {
+        "old_code": "const enFileInput = document.getElementById('en-file');\n        const koFileInput = document.getElementById('ko-file');",
+        "new_code": "        const subtitleFilesInput = document.getElementById('subtitle-files');"
+      },
+      {
+        "old_code": "async function loadAndProcessFiles() {\n            const enFile = enFileInput.files[0];\n            const koFile = koFileInput.files[0];\n            if (!enFile || !koFile) return;",
+        "new_code": "        async function handleFileSelect(event) {\n            const files = event.target.files;\n            if (files.length < 1) return;\n\n            let koFile = null;\n            let enFile = null;\n\n            for (const file of files) {\n                const fileName = file.name.toLowerCase();\n                if (fileName.includes('.ko.srt') || fileName.includes('.ko.txt')) {\n                    koFile = file;\n                } else if (fileName.includes('.en.srt') || fileName.includes('.en.txt')) {\n                    enFile = file;\n                }\n            }\n\n            if (koFile && enFile) {\n                await loadAndProcessFiles(koFile, enFile);\n            } else {\n                subtitleList.innerHTML = `<p class=\"info-msg\" style=\"color: #dc3545;\">파일명에 '.ko.srt'와 '.en.srt'가 포함된<br>두 개의 파일을 동시에 선택해주세요.</p>`;\n            }\n        }\n\n        async function loadAndProcessFiles(koFile, enFile) {"
+      },
+      {
+        "old_code": "enFileInput.addEventListener('change', loadAndProcessFiles);\n        koFileInput.addEventListener('change', loadAndProcessFiles);",
+        "new_code": "        subtitleFilesInput.addEventListener('change', handleFileSelect);"
+      },
+      {
+        "old_code": "if (currentIndex >= mergedSubtitles.length) {\n                    currentIndex = mergedSubtitles.length - 1; \n                    return; \n                }",
+        "new_code": "if (currentIndex >= mergedSubtitles.length) {\n                    currentIndex = mergedSubtitles.length - 1; \n                    alert(\"마지막 문장입니다.\");\n                    // 마지막 문장이라 재생을 못했으므로, 음성 인식 즉시 재개\n                    if (typeof resumeVoiceRecognition === 'function') {\n                        resumeVoiceRecognition();\n                    }\n                    return; \n                }"
+      }
+    ]
+  }
+]

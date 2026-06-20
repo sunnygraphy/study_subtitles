@@ -297,10 +297,14 @@
 
     <h1>🎬 스마트폰 & PC 겸용 자막 학습기</h1>
 
-        <div id="file-loaders">
+    <div id="file-loaders">
         <div class="file-input-wrapper">
-            <label for="subtitle-files">📂 자막 파일 (ko & en) 동시 선택</label>
-            <input type="file" id="subtitle-files" accept=".srt,.txt" multiple style="padding: 20px; text-align: center; background-color: #e9ecef;">
+            <label for="en-file">🔤 영어 자막 파일 (.srt / .txt)</label>
+            <input type="file" id="en-file" accept=".srt,.txt">
+        </div>
+        <div class="file-input-wrapper">
+            <label for="ko-file">🇰🇷 한국어 자막 파일 (.srt / .txt)</label>
+            <input type="file" id="ko-file" accept=".srt,.txt">
         </div>
     </div>
 
@@ -342,7 +346,8 @@
     </div>
 
     <script>
-                const subtitleFilesInput = document.getElementById('subtitle-files');
+        const enFileInput = document.getElementById('en-file');
+        const koFileInput = document.getElementById('ko-file');
         const subtitleList = document.getElementById('subtitle-list');
         const koTextDisplay = document.getElementById('ko-text');
         const enTextDisplay = document.getElementById('en-text');
@@ -480,30 +485,10 @@
             });
         }
 
-                async function handleFileSelect(event) {
-            const files = event.target.files;
-            if (files.length < 1) return;
-
-            let koFile = null;
-            let enFile = null;
-
-            for (const file of files) {
-                const fileName = file.name.toLowerCase();
-                if (fileName.includes('.ko.srt') || fileName.includes('.ko.txt')) {
-                    koFile = file;
-                } else if (fileName.includes('.en.srt') || fileName.includes('.en.txt')) {
-                    enFile = file;
-                }
-            }
-
-            if (koFile && enFile) {
-                await loadAndProcessFiles(koFile, enFile);
-            } else {
-                subtitleList.innerHTML = `<p class="info-msg" style="color: #dc3545;">파일명에 '.ko.srt'와 '.en.srt'가 포함된<br>두 개의 파일을 동시에 선택해주세요.</p>`;
-            }
-        }
-
-        async function loadAndProcessFiles(koFile, enFile) {
+        async function loadAndProcessFiles() {
+            const enFile = enFileInput.files[0];
+            const koFile = koFileInput.files[0];
+            if (!enFile || !koFile) return;
             
             currentFileKey = `subtitle_progress_${enFile.name}_${enFile.size}_${koFile.name}_${koFile.size}`;
             
@@ -545,7 +530,8 @@
             }
         }
 
-                subtitleFilesInput.addEventListener('change', handleFileSelect);
+        enFileInput.addEventListener('change', loadAndProcessFiles);
+        koFileInput.addEventListener('change', loadAndProcessFiles);
 
         function cleanTextForSpeech(text) {
             if (!text) return '';
