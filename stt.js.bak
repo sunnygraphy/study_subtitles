@@ -34,7 +34,7 @@ if (!SpeechRecognition) {
         // ✨ [발음 연습 모드]인 경우: 명령어로 처리하지 않고 발음 유사도 분석으로 분기
         if (isPracticeMode) {
             console.log("💬 사용자 따라하기 발음 감지:", spokenText);
-            isPracticeMode = false; // 연습 모드 즉시 종료
+            // isPracticeMode = false; // ✨ 이제 displayPronunciationScore -> resumeVoiceRecognition에서 처리하므로 주석 처리
             stopVoiceRecognitionTemporarily(); // 결과 표시 및 음성 피드백 중에는 잠시 STT 대기
 
             // index.html의 발음 점수 표시 함수 호출

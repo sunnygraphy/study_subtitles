@@ -39,7 +39,9 @@ if (!SpeechRecognition) {
 
             // index.html의 발음 점수 표시 함수 호출
             if (typeof displayPronunciationScore === 'function' && typeof practiceSentence === 'string') {
-                displayPronunciationScore(practiceSentence, spokenText);
+                // 발음 분석 전, 사용자가 말한 문장에서 구두점을 제거하여 정확도를 높입니다.
+                const cleanedSpokenText = spokenText.replace(/[.,!?]/g, "");
+                displayPronunciationScore(practiceSentence, cleanedSpokenText);
             }
             return; // 일반 명령어 처리 로직을 실행하지 않고 건너뜁니다.
         }

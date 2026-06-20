@@ -689,6 +689,66 @@
             return cleaned.replace(/\s+/g, ' ').trim();
         }
 
+        // 단어 단위로 차이점을 시각적으로 보여주는 HTML 생성 함수
+        function createDiffHtml(original, spoken) {
+            const originalWords = original.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+            const spokenWords = spoken.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+
+            // LCS(최장 공통 부분 수열) 테이블 생성
+            const lcs = Array(spokenWords.length + 1).fill(null).map(() => Array(originalWords.length + 1).fill(0));
+            for (let i = 1; i <= spokenWords.length; i++) {
+                for (let j = 1; j <= originalWords.length; j++) {
+                    if (spokenWords[i - 1] === originalWords[j - 1]) {
+                        lcs[i][j] = lcs[i - 1][j - 1] + 1;
+                    } else {
+                        lcs[i][j] = Math.max(lcs[i - 1][j], lcs[i][j - 1]);
+                    }
+                }
+            }
+
+            // LCS 역추적을 통해 차이점 분석
+            let i = spokenWords.length, j = originalWords.length;
+            const diff = [];
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && spokenWords[i - 1] === originalWords[j - 1]) {
+                    diff.unshift({ type: 'common', value: originalWords[j - 1] });
+                    i--; j--;
+                } else if (i > 0 && (j === 0 || lcs[i][j] === lcs[i - 1][j])) {
+                    diff.unshift({ type: 'inserted', value: spokenWords[i - 1] });
+                    i--;
+                } else if (j > 0 && (i === 0 || lcs[i][j] === lcs[i][j - 1])) {
+                    diff.unshift({ type: 'deleted', value: originalWords[j - 1] });
+                    j--;
+                } else { // 대치(Substitution)된 경우 - 삭제와 삽입으로 처리
+                    diff.unshift({ type: 'inserted', value: spokenWords[i - 1] });
+                    diff.unshift({ type: 'deleted', value: originalWords[j - 1] });
+                    i--; j--;
+                }
+            }
+
+            // 분석된 차이점을 HTML로 변환
+            let html = '';
+            for(let k = 0; k < diff.length; k++) {
+                const part = diff[k];
+                if(part.type === 'common') {
+                    html += `<span>${part.value}</span> `;
+                }
+                else if(part.type === 'deleted') {
+                    // 다음에 오는 삽입과 짝이 맞으면 '틀린 단어'로 처리
+                    if(k + 1 < diff.length && diff[k+1].type === 'inserted') {
+                        const nextPart = diff[k+1];
+                        html += `<del style="color:red;">${part.value}</del> <span style="color:red;">${nextPart.value}</span> `;
+                        k++; // 다음 부분은 이미 처리했으므로 건너뜀
+                    } else { // '빠진 단어'로 처리
+                         html += `<del style="background-color:#f0f0f0; padding: 0 2px;">${part.value}</del> `;
+                    }
+                } else if (part.type === 'inserted') { // '추가된 단어'로 처리
+                    html += `<span style="color:orange;">${part.value}</span> `;
+                }
+            }
+            return html.trim();
+        }
+
         // 레벤슈타인 거리 계산 함수 (유사도 측정용)
         function getLevenshteinDistance(a, b) {
             if (a.length === 0) return b.length;
@@ -720,11 +780,40 @@
                 practiceTimeoutId = null;
             }
 
-            const distance = getLevenshteinDistance(original.toLowerCase(), spoken.toLowerCase());
-            const longerLength = Math.max(original.length, spoken.length);
-            const similarity = Math.round((1 - distance / longerLength) * 100);
+            // 따옴표(')를 포함한 다양한 기호를 제거하여 I'm과 Im의 차이로 점수가 깎이는 현상 방지
+            const originalClean = original.toLowerCase().replace(/[.,!?'"‘’”“]/g, '').trim();
+            const spokenClean = spoken.toLowerCase().replace(/[.,!?'"‘’”“]/g, '').trim();
+
+            const originalWords = originalClean.split(/\s+/).filter(Boolean);
+            const spokenWords = spokenClean.split(/\s+/).filter(Boolean);
+
+            let similarity = 0;
+
+            // 단어가 순서대로 모두 포함되었는지 확인하는 로직
+            let originalIndex = 0;
+            for (let i = 0; i < spokenWords.length; i++) {
+                if (originalIndex < originalWords.length && spokenWords[i] === originalWords[originalIndex]) {
+                    originalIndex++;
+                }
+            }
+
+            if (originalIndex === originalWords.length) {
+                // 원본의 모든 단어가 순서대로 포함되어 있으면 100점
+                similarity = 100;
+            } else {
+                // 그렇지 않은 경우, 단어 기반 레벤슈타인 거리로 유사도 계산
+                const distance = getLevenshteinDistance(originalWords.join(' '), spokenWords.join(' '));
+                const longerLength = Math.max(originalWords.join(' ').length, spokenWords.join(' ').length);
+                if (longerLength > 0) {
+                    similarity = Math.round((1 - distance / longerLength) * 100);
+                } else {
+                    similarity = spokenWords.length > 0 ? 0 : 100;
+                }
+            }
             
-            pronunciationScoreDisplay.innerHTML = `<strong>유사도: ${similarity}%</strong><br><small>(내 발음: ${spoken})</small>`;
+            // 시각적 차이를 보여줄 때도 문장 부호가 완벽히 제거된 텍스트를 사용하여 억울하게 틀린 것으로 표시되지 않게 수정
+            const diffHtml = createDiffHtml(originalClean, spokenClean);
+            pronunciationScoreDisplay.innerHTML = `<strong>유사도: ${similarity}%</strong><br><div style="margin-top: 8px; font-weight: normal; font-size: 1.1em; line-height: 1.6;">${diffHtml}</div>`;
             
             pronunciationScoreDisplay.classList.remove('good', 'medium', 'bad');
             if (similarity >= 85) {

@@ -3,29 +3,13 @@
     "target_file": "index.html",
     "patches": [
       {
-        "old_code": "        let infiniteRepeatMode = null; \n        let repeatTimeoutId = null; \n        let practiceSentence = null; ",
-        "new_code": "        let infiniteRepeatMode = null; \n        let repeatTimeoutId = null; \n        let practiceSentence = null; \n        let practiceTimeoutId = null; // ✨ 발음 연습 타임아웃 ID"
+        "old_code": "const originalClean = original.toLowerCase().replace(/[.,!?]/g, '').trim();\n            const spokenClean = spoken.toLowerCase().replace(/[.,!?]/g, '').trim();",
+        "new_code": "// 따옴표(')를 포함한 다양한 기호를 제거하여 I'm과 Im의 차이로 점수가 깎이는 현상 방지\n            const originalClean = original.toLowerCase().replace(/[.,!?'\"‘’”“]/g, '').trim();\n            const spokenClean = spoken.toLowerCase().replace(/[.,!?'\"‘’”“]/g, '').trim();"
       },
       {
-        "old_code": "        function stopAudio() {\n            // 예약된 다음 반복을 확실하게 취소\n            if (repeatTimeoutId) {\n                clearTimeout(repeatTimeoutId);\n                repeatTimeoutId = null;\n            }\n            synth.cancel();\n            currentUtterance = null;\n            infiniteRepeatMode = null; \n            \n            // 발음 연습 모드도 함께 종료\n            practiceSentence = null;\n            pronunciationScoreDisplay.innerHTML = '';\n            pronunciationScoreDisplay.className = 'score-display';\n            \n            if (typeof resumeVoiceRecognition === 'function') {\n                resumeVoiceRecognition();\n            }\n        }",
-        "new_code": "        function stopAudio() {\n            // 예약된 다음 반복을 확실하게 취소\n            if (repeatTimeoutId) {\n                clearTimeout(repeatTimeoutId);\n                repeatTimeoutId = null;\n            }\n            // ✨ 발음 연습 타임아웃 취소\n            if (practiceTimeoutId) {\n                clearTimeout(practiceTimeoutId);\n                practiceTimeoutId = null;\n            }\n            synth.cancel();\n            currentUtterance = null;\n            infiniteRepeatMode = null; \n            \n            // 발음 연습 모드도 함께 종료\n            practiceSentence = null;\n            pronunciationScoreDisplay.innerHTML = '';\n            pronunciationScoreDisplay.className = 'score-display';\n            \n            if (typeof resumeVoiceRecognition === 'function') {\n                resumeVoiceRecognition();\n            }\n        }"
-      },
-      {
-        "old_code": "        // 점수 표시 함수 (stt.js에서 호출됨)\n        function displayPronunciationScore(original, spoken) {",
-        "new_code": "        // 점수 표시 함수 (stt.js에서 호출됨)\n        function displayPronunciationScore(original, spoken) {\n            // ✨ 발음이 감지되었으므로, 타임아웃 타이머는 취소\n            if (practiceTimeoutId) {\n                clearTimeout(practiceTimeoutId);\n                practiceTimeoutId = null;\n            }\n"
-      },
-      {
-        "old_code": "                            // stt.js의 발음 인식 모드 진입 함수 호출\n                            if (typeof startPracticeMode === 'function') {\n                                startPracticeMode();\n                            } else {\n                                if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();\n                            }\n                        } else {\n                            if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();\n                        }",
-        "new_code": "                            // stt.js의 발음 인식 모드 진입 함수 호출\n                            if (typeof startPracticeMode === 'function') {\n                                startPracticeMode();\n                                \n                                // ✨ 7초 후에도 발음 연습 입력이 없으면 자동으로 일반 모드로 전환\n                                if (practiceTimeoutId) clearTimeout(practiceTimeoutId); // 이전 타이머 정리\n                                practiceTimeoutId = setTimeout(() => {\n                                    console.log(\"⏰ 발음 연습 시간 초과. 일반 명령 모드로 전환합니다.\");\n                                    pronunciationScoreDisplay.innerHTML = '';\n                                    // stt.js의 resume 함수를 호출하여 isPracticeMode를 false로 만듦\n                                    if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();\n                                    practiceTimeoutId = null;\n                                }, 7000); // 7초 대기\n\n                            } else {\n                                if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();\n                            }\n                        } else {\n                            if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();\n                        }"
+        "old_code": "const diffHtml = createDiffHtml(original, spoken);",
+        "new_code": "// 시각적 차이를 보여줄 때도 문장 부호가 완벽히 제거된 텍스트를 사용하여 억울하게 틀린 것으로 표시되지 않게 수정\n            const diffHtml = createDiffHtml(originalClean, spokenClean);"
       }
     ]
-  },
-  {
-    "target_file": "stt.js",
-    "patches": [
-      {
-        "old_code": "        if (isPracticeMode) {\n            console.log(\"💬 사용자 따라하기 발음 감지:\", spokenText);\n            isPracticeMode = false; // 연습 모드 즉시 종료\n            stopVoiceRecognitionTemporarily(); // 결과 표시 및 음성 피드백 중에는 잠시 STT 대기\n\n            // index.html의 발음 점수 표시 함수 호출\n            if (typeof displayPronunciationScore === 'function' && typeof practiceSentence === 'string') {\n                displayPronunciationScore(practiceSentence, spokenText);\n            }\n            return; // 일반 명령어 처리 로직을 실행하지 않고 건너뜁니다.\n        }",
-        "new_code": "        if (isPracticeMode) {\n            console.log(\"💬 사용자 따라하기 발음 감지:\", spokenText);\n            // isPracticeMode = false; // ✨ 이제 displayPronunciationScore -> resumeVoiceRecognition에서 처리하므로 주석 처리\n            stopVoiceRecognitionTemporarily(); // 결과 표시 및 음성 피드백 중에는 잠시 STT 대기\n\n            // index.html의 발음 점수 표시 함수 호출\n            if (typeof displayPronunciationScore === 'function' && typeof practiceSentence === 'string') {\n                displayPronunciationScore(practiceSentence, spokenText);\n            }\n            return; // 일반 명령어 처리 로직을 실행하지 않고 건너뜁니다.\n        }"
-      }
-    ]
-  }]
+  }
+]
