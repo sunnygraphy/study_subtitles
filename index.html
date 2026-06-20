@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>넷플릭스 스마트 자막 학습기</title>
     <style>
-        /* 기본 레이아웃 구성 */
+        /* (스타일 부분은 변경사항 없음) */
         body {
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
             display: flex;
@@ -16,15 +16,12 @@
             background-color: #f8f9fa;
             box-sizing: border-box;
         }
-        
         h1 {
             color: #212529;
             margin: 15px 0;
             font-size: 1.6rem;
             text-align: center;
         }
-
-        /* 공통 카드 스타일 */
         #file-loaders, #selected-subtitle, #subtitle-container {
             width: 100%;
             max-width: 900px;
@@ -35,8 +32,6 @@
             margin-bottom: 15px;
             box-sizing: border-box;
         }
-
-        /* 파일 업로더 레이아웃 */
         #file-loaders {
             display: flex;
             flex-direction: row;
@@ -68,8 +63,6 @@
             box-sizing: border-box;
             font-size: 0.9rem;
         }
-
-        /* 학습 모드 화면 */
         #selected-subtitle {
             text-align: center;
         }
@@ -80,8 +73,6 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
-        /* 자막 보기 상자 */
         #ko-text, #en-text {
             font-size: 1.25rem;
             font-weight: 500;
@@ -108,8 +99,6 @@
             color: #0056b3;
             border-left: 5px solid #007bff;
         }
-
-        /* 블라인드 처리 CSS */
         .hidden-text {
             background-color: #dee2e6 !important;
             color: transparent !important;
@@ -132,8 +121,6 @@
         .hidden-text:hover {
             background-color: #ced4da !important;
         }
-
-        /* 속도 조절 패널 */
         #speed-controls {
             display: flex;
             justify-content: space-around;
@@ -167,8 +154,6 @@
             width: 100%;
             cursor: pointer;
         }
-
-        /* 제어판 버튼 레이아웃 */
         #controls {
             display: flex;
             justify-content: center;
@@ -200,7 +185,15 @@
         #controls #stop-btn:hover {
             background-color: #5a6268;
         }
-        
+        #voiceCommandBtn {
+            background-color: #17a2b8;
+        }
+        #voiceCommandBtn:hover {
+            background-color: #138496;
+        }
+        #voiceCommandBtn.listening {
+            background-color: #dc3545;
+        }
         .checkbox-wrapper {
             display: flex;
             align-items: center;
@@ -220,8 +213,6 @@
             margin-right: 8px;
             transform: scale(1.2);
         }
-
-        /* 자막 리스트 스타일 */
         #subtitle-container h2 {
             margin-top: 0;
             font-size: 1.1rem;
@@ -287,8 +278,6 @@
             font-size: 0.95rem;
             line-height: 1.5;
         }
-
-        /* 모바일 반응형 최적화 */
         @media (max-width: 768px) {
             body { padding: 8px; }
             h1 { font-size: 1.35rem; margin: 10px 0; }
@@ -342,13 +331,14 @@
                  <input type="checkbox" id="repeat-checkbox"> 🔁 한 줄 반복
              </label>
              <button id="stop-btn">⏹ 정지 및 모두 보기</button>
+             <button id="voiceCommandBtn" onclick="toggleVoiceCommand()">🎙️ 음성 명령 켜기</button>
         </div>
     </div>
     
     <div id="subtitle-container">
         <h2>
             전체 자막 목록
-            <span id="save-status"></span> <!-- 저장/불러오기 상태 표시 -->
+            <span id="save-status"></span>
         </h2>
         <div id="subtitle-list">
             <p class="info-msg">가이드: 영어 자막과 한국어 자막 파일을 모두 올려주세요.<br>시간이 일치하는 자막끼리 자동으로 매칭됩니다.</p>
@@ -378,7 +368,6 @@
         let currentIndex = -1;
         let isStudying = false; 
         
-        // 🌟 현재 파일 조합을 식별하기 위한 고유 키
         let currentFileKey = null;
 
         koSpeedInput.addEventListener('input', () => {
@@ -388,7 +377,6 @@
             enSpeedVal.textContent = parseFloat(enSpeedInput.value).toFixed(1);
         });
 
-        // 🌟 학습 위치 저장 함수
         function saveProgress(index) {
             if (currentFileKey && index >= 0) {
                 localStorage.setItem(currentFileKey, index);
@@ -467,7 +455,7 @@
                     currentIndex = index;
                     isStudying = true; 
                     
-                    saveProgress(currentIndex); // 🌟 클릭 시에도 위치 저장
+                    saveProgress(currentIndex);
 
                     document.querySelectorAll('.subtitle-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
@@ -502,7 +490,6 @@
             const koFile = koFileInput.files[0];
             if (!enFile || !koFile) return;
             
-            // 🌟 파일 이름과 크기를 조합하여 고유한 키 생성
             currentFileKey = `subtitle_progress_${enFile.name}_${enFile.size}_${koFile.name}_${koFile.size}`;
             
             subtitleList.innerHTML = `<p class="info-msg">⚙️ 파일 분석 및 매칭 중...</p>`;
@@ -512,7 +499,6 @@
                 mergedSubtitles = mergeSubtitles(parseSrt(koText), parseSrt(enText));
                 displaySubtitles();
 
-                // 🌟 저장된 학습 위치 복원 로직
                 const savedIndex = localStorage.getItem(currentFileKey);
                 if (savedIndex !== null) {
                     currentIndex = parseInt(savedIndex, 10);
@@ -521,18 +507,15 @@
                         saveStatus.textContent = '🔄 이전 학습 위치를 불러왔습니다';
                         setTimeout(() => { saveStatus.textContent = ''; }, 3000);
 
-                        // 리스트 하이라이트
                         const activeItem = subtitleList.querySelector(`.subtitle-item[data-index="${currentIndex}"]`);
                         if (activeItem) activeItem.classList.add('active');
                         
-                        // 화면에 표시 (재생은 하지 않고 중립 상태로 보임)
                         const sub = mergedSubtitles[currentIndex];
                         koTextDisplay.textContent = sub.ko || '(내용 없음)';
                         enTextDisplay.textContent = sub.en || '(매칭된 영어 자막 없음)';
                         koTextDisplay.classList.remove('hidden-text');
                         enTextDisplay.classList.remove('hidden-text');
 
-                        // DOM 렌더링 완료 후 부드럽게 스크롤 이동
                         setTimeout(() => scrollListToActive(), 150);
                     } else {
                         currentIndex = -1;
@@ -542,6 +525,7 @@
                 }
 
             } catch (error) {
+                console.error(error);
                 subtitleList.innerHTML = `<p class="info-msg" style="color: #dc3545;">파일 해석 에러가 발생했습니다.</p>`;
             }
         }
@@ -559,11 +543,23 @@
             return cleaned.replace(/\s+/g, ' ').trim();
         }
 
+        // [최종 수정] speak 함수
         function speak(text, lang) {
-            synth.cancel(); 
-            setTimeout(() => { 
+            // 음성 인식을 잠시 멈춤
+            if (typeof stopVoiceRecognitionTemporarily === 'function') {
+                stopVoiceRecognitionTemporarily();
+            }
+
+            synth.cancel();
+            setTimeout(() => {
                 const cleanedText = cleanTextForSpeech(text);
-                if (!cleanedText || cleanedText === '') return;
+                if (!cleanedText) {
+                    // 읽을 텍스트가 없으면 즉시 음성 인식 재개
+                    if (typeof resumeVoiceRecognition === 'function') {
+                        resumeVoiceRecognition();
+                    }
+                    return;
+                }
                 
                 const utterance = new SpeechSynthesisUtterance(cleanedText);
                 utterance.lang = lang;
@@ -576,11 +572,19 @@
 
                 currentUtterance = utterance;
 
+                // 음성 재생이 끝나면 호출
                 utterance.onend = () => {
-                    if (repeatCheckbox.checked && currentUtterance === utterance) {
-                        speak(text, lang);
+                    currentUtterance = null;
+                    if (repeatCheckbox.checked) {
+                        speak(text, lang); // 반복 옵션이 켜져있으면 다시 말하기 (음성인식은 재개하지 않음)
+                    } else {
+                        // 반복이 아니면 음성 인식을 다시 시작
+                        if (typeof resumeVoiceRecognition === 'function') {
+                            resumeVoiceRecognition();
+                        }
                     }
                 };
+                
                 synth.speak(utterance);
             }, 50); 
         }
@@ -588,23 +592,32 @@
         function stopAudio() {
             synth.cancel();
             currentUtterance = null;
+            // 수동 정지 시에도 음성 인식 재개
+            if (typeof resumeVoiceRecognition === 'function') {
+                resumeVoiceRecognition();
+            }
         }
 
         function playCurrentOrNext(mode) {
             if (mergedSubtitles.length === 0) return;
 
-            if (currentIndex === -1) {
+            if (!isStudying) {
                 currentIndex = 0;
-            } else if (isStudying) {
+            } else {
                 currentIndex++;
                 if (currentIndex >= mergedSubtitles.length) {
                     currentIndex = mergedSubtitles.length - 1; 
+                    alert("마지막 문장입니다.");
+                    // 마지막 문장이라 재생을 못했으므로, 음성 인식 즉시 재개
+                    if (typeof resumeVoiceRecognition === 'function') {
+                        resumeVoiceRecognition();
+                    }
                     return; 
                 }
             }
             
             isStudying = true; 
-            saveProgress(currentIndex); // 🌟 재생 버튼 누를 때 위치 자동 저장
+            saveProgress(currentIndex);
 
             const sub = mergedSubtitles[currentIndex];
 
@@ -654,8 +667,7 @@
         });
 
     </script>
+    
+    <script src="stt.js"></script>
 </body>
 </html>
-
-
-

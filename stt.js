@@ -1,0 +1,115 @@
+// stt.js (수정 최종본)
+
+// 1. 음성 인식 API 초기화
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+let isListening = false;
+let userManuallyStopped = false; // 사용자가 직접 껐는지 확인하는 플래그
+
+if (!SpeechRecognition) {
+    console.error("이 브라우저는 음성 인식을 지원하지 않습니다. 크롬 브라우저 사용을 권장합니다.");
+    const voiceBtn = document.getElementById('voiceCommandBtn');
+    if (voiceBtn) {
+        voiceBtn.disabled = true;
+        voiceBtn.textContent = "⛔ 음성인식 미지원";
+    }
+} else {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ko-KR';
+    recognition.continuous = false; // [수정] 한 번의 명령어를 인식하면 자동으로 종료되도록 변경
+    recognition.interimResults = false;
+
+    // 2. 음성 인식 결과 처리
+    recognition.onresult = (event) => {
+        const lastResultIndex = event.results.length - 1;
+        let command = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
+        
+        command = command.replace(/[.,!?]/g, ""); 
+        console.log("🎤 인식된 명령어:", command);
+
+        // --- 명령어 분기 ---
+        if (command === "next sentence" || command === "넥스트 센텐스") {
+            console.log("👉 실행: 영어 다음 문장");
+            playCurrentOrNext('en');
+        } 
+        else if (command === "다음 문장") {
+            console.log("👉 실행: 한국어 다음 문장");
+            playCurrentOrNext('ko');
+        }
+    };
+
+    // 3. 음성 인식 상태 관리
+    recognition.onstart = () => {
+        isListening = true;
+        console.log("음성 인식이 시작되었습니다. 명령을 기다립니다...");
+        updateVoiceButtonUI();
+    };
+    
+    // [수정] onend 로직 단순화
+    recognition.onend = () => {
+        isListening = false;
+        console.log("음성 인식이 중단되었습니다.");
+        
+        // 사용자가 직접 끈 것이 아니라면, 다시 듣기 모드로 전환
+        if (!userManuallyStopped) {
+            recognition.start();
+        } else {
+            updateVoiceButtonUI(); // '끄기' 상태로 UI 업데이트
+        }
+    };
+
+    recognition.onerror = (event) => {
+        isListening = false;
+        console.error("음성 인식 에러:", event.error);
+        if (event.error === 'not-allowed') {
+            userManuallyStopped = true;
+            alert("음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.");
+        }
+        updateVoiceButtonUI();
+    };
+}
+
+// 4. UI 및 외부 제어 함수
+function toggleVoiceCommand() {
+    if (!recognition) return;
+
+    if (isListening) {
+        userManuallyStopped = true; // 사용자가 직접 끔
+        recognition.stop();
+    } else {
+        userManuallyStopped = false; // 사용자가 켬
+        try {
+            recognition.start();
+        } catch(e) {
+            console.error("음성 인식을 시작할 수 없습니다:", e);
+        }
+    }
+}
+
+// TTS 재생 시 음성 인식 잠시 중단
+function stopVoiceRecognitionTemporarily() {
+    if (isListening) {
+        userManuallyStopped = true; // 재시작을 막기 위해 일시적으로 플래그 설정
+        recognition.stop();
+    }
+}
+
+// TTS 재생 종료 후 음성 인식 재개
+function resumeVoiceRecognition() {
+    if (!isListening) {
+        userManuallyStopped = false; // 다시 자동 재시작이 가능하도록 플래그 복원
+        recognition.start();
+    }
+}
+
+function updateVoiceButtonUI() {
+    const btn = document.getElementById('voiceCommandBtn');
+    if (btn) {
+        btn.textContent = isListening ? "🛑 음성 명령 끄기" : "🎙️ 음성 명령 켜기";
+        if(isListening) {
+            btn.classList.add('listening');
+        } else {
+            btn.classList.remove('listening');
+        }
+    }
+}
