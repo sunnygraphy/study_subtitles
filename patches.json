@@ -3,8 +3,8 @@
     "target_file": "index.html",
     "patches": [
       {
-        "old_code": "        // [수정 완료] 음성 인식을 방해하는 모든 정지 로직 제거\n        function speak(text, lang) {\n            synth.cancel(); // 이전 재생이 있다면 중지\n            \n            setTimeout(() => {\n                const cleanedText = cleanTextForSpeech(text);\n                if (!cleanedText) return;",
-        "new_code": "        // [수정 완료] 음성 인식을 방해하는 모든 정지 로직 제거\n        function speak(text, lang) {\n            synth.cancel(); // 이전 재생이 있다면 중지\n            \n            // [추가] 문장을 읽을 때 무조건 해당 언어의 텍스트 숨김(hide) 해제\n            if (lang === 'ko-KR') {\n                koTextDisplay.classList.remove('hidden-text');\n            } else {\n                enTextDisplay.classList.remove('hidden-text');\n            }\n            \n            setTimeout(() => {\n                const cleanedText = cleanTextForSpeech(text);\n                if (!cleanedText) return;"
+        "old_code": "        function playCurrentOrNext(mode) {\n            if (mergedSubtitles.length === 0) return;\n            if (!isStudying) {",
+        "new_code": "        function playCurrentOrNext(mode) {\n            if (mergedSubtitles.length === 0) return;\n            \n            infiniteRepeatMode = null; // [추가] 다음 문장으로 넘어갈 때 무한 반복 모드 초기화\n            \n            if (!isStudying) {"
       }
     ]
   }

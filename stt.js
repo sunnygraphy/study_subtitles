@@ -28,11 +28,11 @@ if (!SpeechRecognition) {
         console.log("🎤 인식된 명령어:", command);
 
         // --- 명령어 분기 ---
-        if (command === "next sentence" || command === "넥스트 센텐스") {
+        if (command === "next" || command === "넥스트") {
             console.log("👉 실행: 영어 다음 문장");
             playCurrentOrNext('en');
         } 
-        else if (command === "다음 문장") {
+        else if (command === "다음") {
             console.log("👉 실행: 한국어 다음 문장");
             playCurrentOrNext('ko');
         }
@@ -53,7 +53,7 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 한국어 무한 반복");
             startInfiniteRepeat('ko');
         }
-        else if (command === "stop reading" || command === "스탑 리딩") {
+        else if (command === "stop reading" || command === "stop" || command === "스탑 리딩") {
             console.log("👉 실행: 읽기(반복) 종료");
             stopInfiniteRepeat();
         }

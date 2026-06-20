@@ -550,6 +550,13 @@
         function speak(text, lang) {
             synth.cancel(); // 이전 재생이 있다면 중지
             
+            // [추가] 문장을 읽을 때 무조건 해당 언어의 텍스트 숨김(hide) 해제
+            if (lang === 'ko-KR') {
+                koTextDisplay.classList.remove('hidden-text');
+            } else {
+                enTextDisplay.classList.remove('hidden-text');
+            }
+            
             setTimeout(() => {
                 const cleanedText = cleanTextForSpeech(text);
                 if (!cleanedText) return;
