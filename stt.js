@@ -61,9 +61,17 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 한국어 무한 반복");
             startInfiniteRepeat('ko');
         }
-        else if (command === "stop reading" || command === "stop" || command === "스탑 리딩") {
+                else if (command === "stop reading" || command === "stop" || command === "스탑 리딩") {
             console.log("👉 실행: 읽기(반복) 종료");
             stopInfiniteRepeat();
+        }
+        else if (command === "read" || command === "리드" || command==="current") {
+            console.log("👉 실행: 현재 영어 문장 읽기");
+            readCurrent('en');
+        }
+        else if (command === "읽어" || command==="현재") {
+            console.log("👉 실행: 현재 한국어 문장 읽기");
+            readCurrent('ko');
         }
     };
 

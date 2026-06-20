@@ -611,9 +611,24 @@
             }
         }
 
-        function stopInfiniteRepeat() {
+                function stopInfiniteRepeat() {
             stopAudio();
             console.log("무한 반복이 중지되었습니다.");
+        }
+
+        // --- STT 명령어를 위한 현재 문장 다시 읽기 함수 ---
+        function readCurrent(mode) {
+            if (currentIndex === -1 || mergedSubtitles.length === 0) return;
+            
+            infiniteRepeatMode = null; // 현재 읽기가 반복되지 않도록 모드 해제
+            
+            const sub = mergedSubtitles[currentIndex];
+            
+            if (mode === 'ko' && sub.ko) {
+                speak(sub.ko, 'ko-KR');
+            } else if (mode === 'en' && sub.en) {
+                speak(sub.en, 'en-US');
+            }
         }
 
         function playCurrentOrNext(mode) {
