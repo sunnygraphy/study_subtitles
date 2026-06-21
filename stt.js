@@ -100,12 +100,16 @@ if (!SpeechRecognition) {
 
     // 3. 음성 인식 상태 관리
     recognition.onstart = () => {
+        const micStatus = document.getElementById('mic-status-display');
+        if (micStatus) micStatus.textContent = 'ON';
         isListening = true;
         console.log("음성 인식이 시작되었습니다. 명령을 기다립니다...");
         updateVoiceButtonUI();
     };
     
     recognition.onend = () => {
+        const micStatus = document.getElementById('mic-status-display');
+        if (micStatus) micStatus.textContent = 'OFF';
         isListening = false;
         console.log("음성 인식이 중단되었습니다.");
         
@@ -122,6 +126,8 @@ if (!SpeechRecognition) {
     };
 
     recognition.onerror = (event) => {
+        const micStatus = document.getElementById('mic-status-display');
+        if (micStatus) micStatus.textContent = 'ERROR';
         isListening = false;
         if (event.error === 'aborted') {
             console.log("ℹ️ 마이크 일시 정지됨 (aborted - 에코 방지 로직 작동)");

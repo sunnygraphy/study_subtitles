@@ -709,8 +709,9 @@
         function cleanTextForSpeech(text) {
             if (!text) return '';
             let cleaned = text;
-            // [수정] TTS로 읽기 전, 그리고 '원본' 문장으로 사용되기 전에 모든 문장 부호와 특수 기호를 제거합니다.
-            cleaned = cleaned.replace(/[.,!?'"‘’”“]/g, ' '); // 마침표, 쉼표, 따옴표 등 제거
+            // [수정] TTS로 읽기 전, 그리고 '원본' 문장으로 사용되기 전에 문장 부호를 제거합니다.
+            // 중요: 아포스트로피(')를 공백으로 바꾸면 I'm -> I m으로 분리되므로 I'm, we'll 유지를 위해 제외합니다.
+            cleaned = cleaned.replace(/[.,!?"”“]/g, ' '); // 마침표, 쉼표, 큰따옴표 등 공백으로 제거
             cleaned = cleaned.replace(/\[.*?\]/g, ' ');      // [대괄호] 내용 제거
             cleaned = cleaned.replace(/\(.*?\)/g, ' ');      // (소괄호) 내용 제거
             cleaned = cleaned.replace(/[-~*♪♫]/g, ' ');      // 특수기호 제거
@@ -809,9 +810,23 @@
                 practiceTimeoutId = null;
             }
 
-            // 따옴표(')를 포함한 다양한 기호를 제거하여 I'm과 Im의 차이로 점수가 깎이는 현상 방지
-            const originalClean = original.toLowerCase().replace(/[.,!?'"‘’”“]/g, '').trim();
-            const spokenClean = spoken.toLowerCase().replace(/[.,!?'"‘’”“]/g, '').trim();
+            // 1. I'm -> im 처럼 아포스트로피는 병합하여 제거하고, gonna -> going to 등 구어체 동의어를 통일하는 전처리 함수
+            const normalizeText = (t) => {
+                let text = t.toLowerCase();
+                text = text.replace(/['‘’`]/g, ''); // 아포스트로피는 공백 없이 제거 (I'm -> im, don't -> dont)
+                text = text.replace(/[.,!?"”“\-]/g, ' '); // 나머지 기호는 공백으로 변경하여 단어 분리
+                
+                // STT가 다르게 인식하기 쉬운 구어체/축약어 동의어 사전
+                const slangMap = {
+                    "gonna": "going to", "wanna": "want to", "gotta": "got to",
+                    "lemme": "let me", "gimme": "give me", "kinda": "kind of",
+                    "sorta": "sort of", "outta": "out of", "cuz": "because", "cause": "because"
+                };
+                return text.split(/\s+/).map(w => slangMap[w] || w).join(' ').trim();
+            };
+
+            const originalClean = normalizeText(original);
+            const spokenClean = normalizeText(spoken);
 
             const originalWords = originalClean.split(/\s+/).filter(Boolean);
             const spokenWords = spokenClean.split(/\s+/).filter(Boolean);
