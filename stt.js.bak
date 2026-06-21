@@ -123,7 +123,12 @@ if (!SpeechRecognition) {
 
     recognition.onerror = (event) => {
         isListening = false;
-        console.error("음성 인식 에러:", event.error);
+        if (event.error === 'aborted') {
+            console.log("ℹ️ 마이크 일시 정지됨 (aborted - 에코 방지 로직 작동)");
+        } else {
+            console.error("음성 인식 에러:", event.error);
+        }
+        
         if (event.error === 'not-allowed') {
             userManuallyStopped = true;
             alert("음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.");
