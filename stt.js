@@ -8,6 +8,7 @@ let isListening = false;
 let userManuallyStopped = true; // 처음에는 무조건 꺼진 상태로 시작
 let isTemporarilyIgnoring = false;
 let isPracticeMode = false;
+let isTtsPlaying = false; // 모바일 기기 에코 방지용: TTS 재생 중 상태 추적
 
 if (!SpeechRecognition) {
     console.error("이 브라우저는 음성 인식을 지원하지 않습니다. 크롬 브라우저 사용을 권장합니다.");
@@ -108,8 +109,8 @@ if (!SpeechRecognition) {
         isListening = false;
         console.log("음성 인식이 중단되었습니다.");
         
-        // 사용자가 명시적으로 끄지 않았다면(세션 자동 만료 등) 다시 켭니다.
-        if (!userManuallyStopped) {
+        // 사용자가 명시적으로 끄지 않았고, TTS 재생 중이 아닐 때만 다시 켭니다.
+        if (!userManuallyStopped && !isTtsPlaying) {
             console.log("자동 재시작 시도...");
             try {
                 recognition.start();
@@ -122,7 +123,12 @@ if (!SpeechRecognition) {
 
     recognition.onerror = (event) => {
         isListening = false;
-        console.error("음성 인식 에러:", event.error);
+        if (event.error === 'aborted') {
+            console.log("ℹ️ 마이크 일시 정지됨 (aborted - 에코 방지 로직 작동)");
+        } else {
+            console.error("음성 인식 에러:", event.error);
+        }
+        
         if (event.error === 'not-allowed') {
             userManuallyStopped = true;
             alert("음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.");
@@ -158,8 +164,12 @@ function toggleVoiceCommand() {
 
 // TTS 재생 시 음성 인식 결과 처리를 잠시 무시하는 모드
 function stopVoiceRecognitionTemporarily() {
-    console.log("🤫 STT 무시 모드 시작");
+    console.log("🤫 STT 무시 모드 시작 (마이크 일시 정지)");
     isTemporarilyIgnoring = true;
+    isTtsPlaying = true;
+    if (recognition && isListening) {
+        try { recognition.abort(); } catch(e) {} // 모바일 에코 방지: TTS 소리가 녹음되는 것을 원천 차단
+    }
 }
 
 // TTS 재생 종료 후 음성 인식 결과 처리 재개 (연습 모드도 함께 완전히 초기화)
@@ -167,6 +177,12 @@ function resumeVoiceRecognition() {
     console.log("🙂 STT 무시 모드 해제 (명령어 대기 시작)");
     isTemporarilyIgnoring = false;
     isPracticeMode = false; 
+    isTtsPlaying = false;
+    if (recognition && !userManuallyStopped && !isListening) {
+        setTimeout(() => {
+            try { recognition.start(); } catch(e) {}
+        }, 300); // 남은 기계음이 녹음되지 않도록 지연 재시작
+    }
 }
 
 // ✨ [추가] 영어 TTS 출력 후 발음 연습을 들을 수 있도록 모드를 전환하는 함수
@@ -174,6 +190,12 @@ function startPracticeMode() {
     console.log("👂 발음 연습 인식 시작...");
     isTemporarilyIgnoring = false; // STT가 들어야 하므로 무시 모드 해제
     isPracticeMode = true; // 다음 음성 결과는 연습 분석으로 이동하도록 설정
+    isTtsPlaying = false;
+    if (recognition && !userManuallyStopped && !isListening) {
+        setTimeout(() => {
+            try { recognition.start(); } catch(e) {}
+        }, 300); // 지연 재시작으로 에코 방지
+    }
 }
 
 function updateVoiceButtonUI() {

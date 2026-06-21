@@ -1,14 +1,10 @@
 [
   {
-    "target_file": "index.html",
+    "target_file": "stt.js",
     "patches": [
       {
-        "old_code": "            // [수정] TTS로 읽기 전, 그리고 '원본' 문장으로 사용되기 전에 모든 문장 부호와 특수 기호를 제거합니다.\n            cleaned = cleaned.replace(/[.,!?'\"‘’”“]/g, ' '); // 마침표, 쉼표, 따옴표 등 제거",
-        "new_code": "            // [수정] TTS로 읽기 전, 그리고 '원본' 문장으로 사용되기 전에 문장 부호를 제거합니다.\n            // 중요: 아포스트로피(')를 공백으로 바꾸면 I'm -> I m으로 분리되므로 I'm, we'll 유지를 위해 제외합니다.\n            cleaned = cleaned.replace(/[.,!?\"”“]/g, ' '); // 마침표, 쉼표, 큰따옴표 등 공백으로 제거"
-      },
-      {
-        "old_code": "            // 따옴표(')를 포함한 다양한 기호를 제거하여 I'm과 Im의 차이로 점수가 깎이는 현상 방지\n            const originalClean = original.toLowerCase().replace(/[.,!?'\"‘’”“]/g, '').trim();\n            const spokenClean = spoken.toLowerCase().replace(/[.,!?'\"‘’”“]/g, '').trim();\n\n            const originalWords = originalClean.split(/\\s+/).filter(Boolean);\n            const spokenWords = spokenClean.split(/\\s+/).filter(Boolean);",
-        "new_code": "            // 1. I'm -> im 처럼 아포스트로피는 병합하여 제거하고, gonna -> going to 등 구어체 동의어를 통일하는 전처리 함수\n            const normalizeText = (t) => {\n                let text = t.toLowerCase();\n                text = text.replace(/['‘’`]/g, ''); // 아포스트로피는 공백 없이 제거 (I'm -> im, don't -> dont)\n                text = text.replace(/[.,!?\"”“\\-]/g, ' '); // 나머지 기호는 공백으로 변경하여 단어 분리\n                \n                // STT가 다르게 인식하기 쉬운 구어체/축약어 동의어 사전\n                const slangMap = {\n                    \"gonna\": \"going to\", \"wanna\": \"want to\", \"gotta\": \"got to\",\n                    \"lemme\": \"let me\", \"gimme\": \"give me\", \"kinda\": \"kind of\",\n                    \"sorta\": \"sort of\", \"outta\": \"out of\", \"cuz\": \"because\", \"cause\": \"because\"\n                };\n                return text.split(/\\s+/).map(w => slangMap[w] || w).join(' ').trim();\n            };\n\n            const originalClean = normalizeText(original);\n            const spokenClean = normalizeText(spoken);\n\n            const originalWords = originalClean.split(/\\s+/).filter(Boolean);\n            const spokenWords = spokenClean.split(/\\s+/).filter(Boolean);"
+        "old_code": "    recognition.onerror = (event) => {\n        isListening = false;\n        console.error(\"음성 인식 에러:\", event.error);\n        if (event.error === 'not-allowed') {\n            userManuallyStopped = true;\n            alert(\"음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.\");\n        }\n        updateVoiceButtonUI();\n    };",
+        "new_code": "    recognition.onerror = (event) => {\n        isListening = false;\n        if (event.error === 'aborted') {\n            console.log(\"ℹ️ 마이크 일시 정지됨 (aborted - 에코 방지 로직 작동)\");\n        } else {\n            console.error(\"음성 인식 에러:\", event.error);\n        }\n        \n        if (event.error === 'not-allowed') {\n            userManuallyStopped = true;\n            alert(\"음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.\");\n        }\n        updateVoiceButtonUI();\n    };"
       }
     ]
   }
