@@ -108,21 +108,22 @@ if (!SpeechRecognition) {
     recognition.onend = () => {
         isListening = false;
         console.log("음성 인식이 중단되었습니다.");
-        
-        // 사용자가 명시적으로 끄지 않았고, TTS 재생 중이 아닐 때만 다시 켭니다.
-        // [수정] 모바일에서 'no-speech' 에러 등으로 짧게 재시작되며 '띡띡' 소리나는 것을 방지하기 위해 짧은 지연(delay) 후 재시작
-        if (!userManuallyStopped && !isTtsPlaying) {
+
+        // [최종 수정] 사용자가 직접 끄지 않았고, TTS/연습 모드가 아닐 때만 자동 재시작합니다.
+        // 모바일 브라우저의 'no-speech' 등 자동 종료에 대응하기 위한 로직입니다.
+        if (!userManuallyStopped && !isTtsPlaying && !isTemporarilyIgnoring) {
+            // 재시작 주기를 100초로 길게 설정하여 '띡띡'거리는 현상을 사실상 멈춥니다.
             setTimeout(() => {
-                // setTimeout 콜백 시점에도 사용자가 껐는지 다시 한번 체크
+                // 재시작 직전에도 상태를 다시 한번 확인하여 안정성을 높입니다.
                 if (!userManuallyStopped && !isListening) {
-                    console.log("음성 인식 자동 재시작...");
                     try {
+                        console.log("유휴 상태로 인한 자동 재시작 (100초 대기 후)...");
                         recognition.start();
-                    } catch(e) {
-                        console.error("자동 재시작 중 오류 무시:", e);
+                    } catch (e) {
+                        console.error("자동 재시작 실패:", e);
                     }
                 }
-            }, 100); // 100ms 지연으로 충분
+            }, 100000); // 100,000ms = 100초
         }
         updateVoiceButtonUI();
     };

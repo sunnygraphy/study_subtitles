@@ -129,15 +129,19 @@ if (!SpeechRecognition) {
 
     recognition.onerror = (event) => {
         isListening = false;
-        if (event.error === 'aborted') {
-            console.log("ℹ️ 마이크 일시 정지됨 (aborted - 에코 방지 로직 작동)");
+        // [수정] 모바일에서 흔히 발생하는 'no-speech' 오류는 무시하고 onend에서 재시작하도록 유도합니다.
+        if (event.error === 'no-speech') {
+            console.log("ℹ️ 감지된 음성 없음, 잠시 후 자동 재시작됩니다.");
+            // 이 오류는 onend 이벤트를 유발하므로, onend에서 재시작 로직을 처리합니다.
+        } else if (event.error === 'aborted') {
+            // 사용자가 '끄기' 버튼을 누르거나 TTS 재생 시작 시 abort()가 호출될 수 있습니다.
+            // 이 경우는 의도된 중지이므로 특별한 에러 메시지를 표시하지 않습니다.
+            console.log("ℹ️ 음성 인식이 의도적으로 중지되었습니다.");
+        } else if (event.error === 'not-allowed') {
+            userManuallyStopped = true; // 사용자가 권한을 거부했으므로 다시 켜지지 않게 설정
+            alert("음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.");
         } else {
             console.error("음성 인식 에러:", event.error);
-        }
-        
-        if (event.error === 'not-allowed') {
-            userManuallyStopped = true;
-            alert("음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.");
         }
         updateVoiceButtonUI();
     };
