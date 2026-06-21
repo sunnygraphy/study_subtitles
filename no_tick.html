@@ -2,22 +2,21 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Web Speech API Demo</title>
+  <title>지속 음성 인식</title>
 </head>
 <body>
-  <h1>음성 인식 테스트</h1>
+  <h1>계속 켜져 있는 음성 인식</h1>
   <button id="startBtn">🎤 시작</button>
   <button id="stopBtn">🛑 중지</button>
   <p id="result">결과: </p>
 
   <script>
-    // 브라우저 호환성 처리
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
-    recognition.lang = "ko-KR";          // 한국어 설정
-    recognition.continuous = true;       // 계속 듣기
-    recognition.interimResults = true;   // 중간 결과도 받기
+    recognition.lang = "ko-KR";
+    recognition.continuous = true;       // 계속 듣기 모드
+    recognition.interimResults = true;   // 중간 결과도 표시
 
     recognition.onresult = (event) => {
       let transcript = "";
@@ -27,16 +26,22 @@
       document.getElementById("result").textContent = "결과: " + transcript;
     };
 
-    // 자동 재시작 방지
+    // 자동 재시작: 삑삑 소리 줄이려면 onend에서 바로 재시작
     recognition.onend = () => {
-      console.log("인식 종료됨 (자동 재시작 없음)");
+      if (keepListening) {
+        recognition.start();
+      }
     };
 
+    let keepListening = false;
+
     document.getElementById("startBtn").onclick = () => {
+      keepListening = true;
       recognition.start();
     };
 
     document.getElementById("stopBtn").onclick = () => {
+      keepListening = false;
       recognition.stop();
     };
   </script>
