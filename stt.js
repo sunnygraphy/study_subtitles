@@ -108,41 +108,30 @@ if (!SpeechRecognition) {
     recognition.onend = () => {
         isListening = false;
         console.log("음성 인식이 중단되었습니다.");
-
-        // [최종 수정] 사용자가 직접 끄지 않았고, TTS/연습 모드가 아닐 때만 자동 재시작합니다.
-        // 모바일 브라우저의 'no-speech' 등 자동 종료에 대응하기 위한 로직입니다.
-        if (!userManuallyStopped && !isTtsPlaying && !isTemporarilyIgnoring) {
-            // 재시작 주기를 100초로 길게 설정하여 '띡띡'거리는 현상을 사실상 멈춥니다.
-            setTimeout(() => {
-                // 재시작 직전에도 상태를 다시 한번 확인하여 안정성을 높입니다.
-                if (!userManuallyStopped && !isListening) {
-                    try {
-                        console.log("유휴 상태로 인한 자동 재시작 (100초 대기 후)...");
-                        recognition.start();
-                    } catch (e) {
-                        console.error("자동 재시작 실패:", e);
-                    }
-                }
-            }, 100000); // 100,000ms = 100초
+        
+        // 사용자가 명시적으로 끄지 않았고, TTS 재생 중이 아닐 때만 다시 켭니다.
+        if (!userManuallyStopped && !isTtsPlaying) {
+            console.log("자동 재시작 시도...");
+            try {
+                recognition.start();
+            } catch(e) {
+                console.error("자동 재시작 중 오류 무시:", e);
+            }
         }
         updateVoiceButtonUI();
     };
 
     recognition.onerror = (event) => {
         isListening = false;
-        // [수정] 모바일에서 흔히 발생하는 'no-speech' 오류는 무시하고 onend에서 재시작하도록 유도합니다.
-        if (event.error === 'no-speech') {
-            console.log("ℹ️ 감지된 음성 없음, 잠시 후 자동 재시작됩니다.");
-            // 이 오류는 onend 이벤트를 유발하므로, onend에서 재시작 로직을 처리합니다.
-        } else if (event.error === 'aborted') {
-            // 사용자가 '끄기' 버튼을 누르거나 TTS 재생 시작 시 abort()가 호출될 수 있습니다.
-            // 이 경우는 의도된 중지이므로 특별한 에러 메시지를 표시하지 않습니다.
-            console.log("ℹ️ 음성 인식이 의도적으로 중지되었습니다.");
-        } else if (event.error === 'not-allowed') {
-            userManuallyStopped = true; // 사용자가 권한을 거부했으므로 다시 켜지지 않게 설정
-            alert("음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.");
+        if (event.error === 'aborted') {
+            console.log("ℹ️ 마이크 일시 정지됨 (aborted - 에코 방지 로직 작동)");
         } else {
             console.error("음성 인식 에러:", event.error);
+        }
+        
+        if (event.error === 'not-allowed') {
+            userManuallyStopped = true;
+            alert("음성 명령을 사용하려면 마이크 권한을 허용해야 합니다.");
         }
         updateVoiceButtonUI();
     };
