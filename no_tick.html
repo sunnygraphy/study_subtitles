@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edge 음성인식</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 24px;
+    }
+    h1 { margin: 0 0 12px; font-size: 24px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #38bdf8;
+      color: #082f49;
+      font-weight: 700;
+    }
+    button.stop { background: #fb7185; color: #4c0519; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .panel {
+      background: #0b1220;
+      border: 1px solid #243244;
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 52px;
+      margin-top: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .label { font-size: 13px; color: #94a3b8; margin-top: 8px; }
+    select { accent-color: #38bdf8; }
+    .muted { color: #94a3b8; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Edge 음성인식</h1>
+    <div id="support" class="muted">지원 여부 확인 중...</div>
+
+    <div class="row">
+      <button id="startBtn">음성인식 시작</button>
+      <button id="stopBtn" class="stop" disabled>중지</button>
+    </div>
+
+    <div class="label">언어</div>
+    <select id="lang">
+      <option value="ko-KR" selected>한국어 (ko-KR)</option>
+      <option value="en-US">English (en-US)</option>
+      <option value="ja-JP">日本語 (ja-JP)</option>
+    </select>
+
+    <div class="label">상태</div>
+    <div id="status" class="panel">대기 중</div>
+
+    <div class="label">중간 결과</div>
+    <div id="interimBox" class="panel"></div>
+
+    <div class="label">최종 결과</div>
+    <div id="finalBox" class="panel"></div>
+  </div>
+
+  <script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const supportEl = document.getElementById('support');
+    const statusEl = document.getElementById('status');
+    const interimBox = document.getElementById('interimBox');
+    const finalBox = document.getElementById('finalBox');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const langEl = document.getElementById('lang');
+
+    let recognition = null;
+    let finalText = '';
+    let userStopped = false;
+    let isStarting = false;
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function createRecognition() {
+      if (!SpeechRecognition) return null;
+
+      const r = new SpeechRecognition();
+      r.lang = langEl.value;
+      r.continuous = false;
+      r.interimResults = true;
+      r.maxAlternatives = 1;
+
+      r.onstart = () => {
+        setStatus('듣는 중...');
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        isStarting = false;
+      };
+
+      r.onresult = (event) => {
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += transcript + '\n';
+          } else {
+            interimText += transcript;
+          }
+        }
+        interimBox.textContent = interimText.trim();
+        finalBox.textContent = finalText.trim();
+      };
+
+      r.onerror = (event) => {
+        setStatus('오류: ' + event.error);
+      };
+
+      r.onend = () => {
+        setStatus(userStopped ? '중지됨' : '종료됨');
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        isStarting = false;
+      };
+
+      return r;
+    }
+
+    function resetRecognition() {
+      recognition = createRecognition();
+      if (!recognition) {
+        supportEl.textContent = '이 브라우저는 SpeechRecognition API를 지원하지 않습니다.';
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+      } else {
+        supportEl.textContent = 'SpeechRecognition API를 사용할 수 있습니다.';
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (!recognition) resetRecognition();
+      if (!recognition || isStarting) return;
+
+      userStopped = false;
+      recognition.lang = langEl.value;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      try {
+        isStarting = true;
+        recognition.start();
+      } catch (e) {
+        isStarting = false;
+        setStatus('시작할 수 없습니다.');
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      userStopped = true;
+      if (recognition) recognition.stop();
+    });
+
+    langEl.addEventListener('change', () => {
+      resetRecognition();
+    });
+
+    resetRecognition();
+  </script>
+</body>
+</html>
