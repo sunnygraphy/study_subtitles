@@ -26,7 +26,7 @@
             gap: 10px;
         }
 
-        #help-btn, #settings-btn {
+        #help-btn {
             font-size: 1.1rem;
             font-weight: bold;
             color: #007bff;
@@ -393,11 +393,6 @@
             .checkbox-wrapper { flex: 1 1 100%; margin-top: 5px; }
             .subtitle-item { flex-direction: column; gap: 5px; padding: 12px; }
             .subtitle-id { text-align: left; border-bottom: 1px dashed #dee2e6; padding-bottom: 3px; margin-bottom: 3px; }
-            @media (max-width: 768px) {
-                .modal-content { padding: 15px; } /* 패딩 축소 */
-                .command-key { font-size: 0.9rem; flex-basis: 120px; } /* 폰트/너비 축소 */
-                .command-desc { font-size: 0.9rem; } /* 폰트 축소 */
-            }
         }
     </style>
 </head>
@@ -405,7 +400,6 @@
     <h1>
         <span>🎬 스마트폰 & PC 겸용 자막 학습기</span>
         <button id="help-btn">?</button>
-        <button id="settings-btn">⚙️</button>
     </h1>
 
     <!-- Help Modal -->
@@ -428,26 +422,6 @@
         </div>
     </div>
 
-
-
-    <!-- Settings Modal -->
-    <div id="settings-modal-overlay" class="modal-overlay">
-        <div class="modal-content">
-            <button id="settings-modal-close-btn" class="modal-close-btn">&times;</button>
-            <h3>⚙️ 재생 속도 설정</h3>
-            <div id="speed-controls">
-                <div class="speed-slider">
-                    <label for="ko-speed">🇰🇷 한국어 속도: <span id="ko-speed-val">1.0</span>x</label>
-                    <input type="range" id="ko-speed" min="0.5" max="2.0" step="0.1" value="1.0">
-                </div>
-                <div class="speed-slider">
-                    <label for="en-speed">🔤 영어 속도: <span id="en-speed-val">1.0</span>x</label>
-                    <input type="range" id="en-speed" min="0.5" max="2.0" step="0.1" value="1.0">
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div id="file-loaders">
         <div class="file-input-wrapper">
             <label for="subtitle-files">📂 자막 파일 (ko & en) 동시 선택</label>
@@ -461,11 +435,20 @@
         <div id="en-text">The English subtitle will be displayed here.</div>
         <div id="pronunciation-score" class="score-display"></div> <!-- 발음 평가 점수판 -->
         
-
+        <div id="speed-controls">
+            <div class="speed-slider">
+                <label for="ko-speed">🇰🇷 한국어 속도: <span id="ko-speed-val">1.0</span>x</label>
+                <input type="range" id="ko-speed" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="speed-slider">
+                <label for="en-speed">🔤 영어 속도: <span id="en-speed-val">1.0</span>x</label>
+                <input type="range" id="en-speed" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+        </div>
         
         <div id="controls">
-             <button id="ko-speak-btn">▶️ 다음 재생</button>
-             <button id="en-speak-btn">▶️ Next Play</button>
+             <button id="ko-speak-btn">▶️ 한국어 재생 / 다음</button>
+             <button id="en-speak-btn">▶️ 영어 재생 / 다음</button>
              <label class="checkbox-wrapper">
                  <input type="checkbox" id="repeat-checkbox"> 🔁 한 줄 반복
              </label>
@@ -505,9 +488,6 @@
         const helpBtn = document.getElementById('help-btn');
         const helpModal = document.getElementById('help-modal-overlay');
         const modalCloseBtn = document.getElementById('modal-close-btn');
-        const settingsBtn = document.getElementById('settings-btn');
-        const settingsModal = document.getElementById('settings-modal-overlay');
-        const settingsModalCloseBtn = document.getElementById('settings-modal-close-btn');
 
         let mergedSubtitles = [];
         const synth = window.speechSynthesis;
@@ -528,13 +508,6 @@
         modalCloseBtn.addEventListener('click', () => { helpModal.style.display = 'none'; });
         helpModal.addEventListener('click', (event) => {
             if (event.target === helpModal) { helpModal.style.display = 'none'; }
-        });
-
-        // Settings 모달창 이벤트 처리
-        settingsBtn.addEventListener('click', () => { settingsModal.style.display = 'flex'; });
-        settingsModalCloseBtn.addEventListener('click', () => { settingsModal.style.display = 'none'; });
-        settingsModal.addEventListener('click', (event) => {
-            if (event.target === settingsModal) { settingsModal.style.display = 'none'; }
         });
 
         koSpeedInput.addEventListener('input', () => {
@@ -709,9 +682,8 @@
         function cleanTextForSpeech(text) {
             if (!text) return '';
             let cleaned = text;
-            // [수정] TTS로 읽기 전, 그리고 '원본' 문장으로 사용되기 전에 문장 부호를 제거합니다.
-            // 중요: 아포스트로피(')를 공백으로 바꾸면 I'm -> I m으로 분리되므로 I'm, we'll 유지를 위해 제외합니다.
-            cleaned = cleaned.replace(/[.,!?"”“]/g, ' '); // 마침표, 쉼표, 큰따옴표 등 공백으로 제거
+            // [수정] TTS로 읽기 전, 그리고 '원본' 문장으로 사용되기 전에 모든 문장 부호와 특수 기호를 제거합니다.
+            cleaned = cleaned.replace(/[.,!?'"‘’”“]/g, ' '); // 마침표, 쉼표, 따옴표 등 제거
             cleaned = cleaned.replace(/\[.*?\]/g, ' ');      // [대괄호] 내용 제거
             cleaned = cleaned.replace(/\(.*?\)/g, ' ');      // (소괄호) 내용 제거
             cleaned = cleaned.replace(/[-~*♪♫]/g, ' ');      // 특수기호 제거
@@ -810,23 +782,9 @@
                 practiceTimeoutId = null;
             }
 
-            // 1. I'm -> im 처럼 아포스트로피는 병합하여 제거하고, gonna -> going to 등 구어체 동의어를 통일하는 전처리 함수
-            const normalizeText = (t) => {
-                let text = t.toLowerCase();
-                text = text.replace(/['‘’`]/g, ''); // 아포스트로피는 공백 없이 제거 (I'm -> im, don't -> dont)
-                text = text.replace(/[.,!?"”“\-]/g, ' '); // 나머지 기호는 공백으로 변경하여 단어 분리
-                
-                // STT가 다르게 인식하기 쉬운 구어체/축약어 동의어 사전
-                const slangMap = {
-                    "gonna": "going to", "wanna": "want to", "gotta": "got to",
-                    "lemme": "let me", "gimme": "give me", "kinda": "kind of",
-                    "sorta": "sort of", "outta": "out of", "cuz": "because", "cause": "because"
-                };
-                return text.split(/\s+/).map(w => slangMap[w] || w).join(' ').trim();
-            };
-
-            const originalClean = normalizeText(original);
-            const spokenClean = normalizeText(spoken);
+            // 따옴표(')를 포함한 다양한 기호를 제거하여 I'm과 Im의 차이로 점수가 깎이는 현상 방지
+            const originalClean = original.toLowerCase().replace(/[.,!?'"‘’”“]/g, '').trim();
+            const spokenClean = spoken.toLowerCase().replace(/[.,!?'"‘’”“]/g, '').trim();
 
             const originalWords = originalClean.split(/\s+/).filter(Boolean);
             const spokenWords = spokenClean.split(/\s+/).filter(Boolean);
