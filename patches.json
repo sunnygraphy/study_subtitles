@@ -1,10 +1,10 @@
 [
   {
-    "target_file": "stt.js",
+    "target_file": "index.html",
     "patches": [
       {
-        "old_code": "if (!userManuallyStopped) {",
-        "new_code": "        // [수정] 사용자가 끄지 않았고, '소프트웨어 무시 모드'가 아닐 때만 자동 재시작\n        if (!userManuallyStopped && !isTemporarilyIgnoring) {"
+        "old_code": "                            // stt.js의 발음 인식 모드 진입 함수 호출\n                            if (typeof startPracticeMode === 'function') {\n                                startPracticeMode();\n                                \n                                // ✨ 7초 후에도 발음 연습 입력이 없으면 자동으로 일반 모드로 전환\n                                if (practiceTimeoutId) clearTimeout(practiceTimeoutId); // 이전 타이머 정리\n                                practiceTimeoutId = setTimeout(() => {\n                                    console.log(\"⏰ 발음 연습 시간 초과. 일반 명령 모드로 전환합니다.\");\n                                    pronunciationScoreDisplay.innerHTML = '';\n                                    // stt.js의 resume 함수를 호출하여 isPracticeMode를 false로 만듦\n                                    if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();\n                                    practiceTimeoutId = null;\n                                }, 10000); // 7초 대기\n\n                            }",
+        "new_code": "                            // stt.js의 발음 인식 모드 진입 함수 호출\n                            if (typeof startPracticeMode === 'function') {\n                                // [수정] TTS 종료 후 0.5초 지연을 주어 에코를 방지하고 STT를 시작합니다.\n                                setTimeout(() => {\n                                    startPracticeMode();\n                                \n                                    // ✨ 10초 후에도 발음 연습 입력이 없으면 자동으로 일반 모드로 전환\n                                    // (타임아웃 로직을 setTimeout 콜백 안으로 이동)\n                                    if (practiceTimeoutId) clearTimeout(practiceTimeoutId); // 이전 타이머 정리\n                                    practiceTimeoutId = setTimeout(() => {\n                                        console.log(\"⏰ 발음 연습 시간 초과. 일반 명령 모드로 전환합니다.\");\n                                        pronunciationScoreDisplay.innerHTML = '';\n                                        // stt.js의 resume 함수를 호출하여 isPracticeMode를 false로 만듦\n                                        if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();\n                                        practiceTimeoutId = null;\n                                    }, 10000); // 10초 대기\n                                }, 500); // 0.5초 지연\n                            }"
       }
     ]
   }
