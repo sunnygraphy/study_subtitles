@@ -7,6 +7,7 @@ let isListening = false;
 let userManuallyStopped = false; // 사용자가 직접 껐는지 확인하는 플래그
 let isTemporarilyIgnoring = false; // TTS 재생 중에 STT 결과를 무시하기 위한 플래그
 let isPracticeMode = false; // ✨ 발음 연습(따라 하기) 모드 플래그
+let isRestarting = false; // ✨ [추가] 자동 재시작 중 발생하는 충돌을 막기 위한 플래그
 
 if (!SpeechRecognition) {
     console.error("이 브라우저는 음성 인식을 지원하지 않습니다. 크롬 브라우저 사용을 권장합니다.");
@@ -39,7 +40,9 @@ if (!SpeechRecognition) {
 
             // index.html의 발음 점수 표시 함수 호출
             if (typeof displayPronunciationScore === 'function' && typeof practiceSentence === 'string') {
-                displayPronunciationScore(practiceSentence, spokenText);
+                // 발음 분석 전, 사용자가 말한 문장에서 구두점을 제거하여 정확도를 높입니다.
+                const cleanedSpokenText = spokenText.replace(/[.,!?]/g, "");
+                displayPronunciationScore(practiceSentence, cleanedSpokenText);
             }
             return; // 일반 명령어 처리 로직을 실행하지 않고 건너뜁니다.
         }
@@ -84,7 +87,7 @@ if (!SpeechRecognition) {
             console.log("👉 실행: 읽기(반복) 종료");
             stopInfiniteRepeat();
         }
-        else if (command === "read") {
+        else if (command === "read" || command === "read it" || command === "r e a d") {
             console.log("👉 실행: 현재 영어 문장 읽기");
             readCurrent('en');
         }
@@ -104,14 +107,28 @@ if (!SpeechRecognition) {
     recognition.onend = () => {
         console.log("음성 인식이 중단되었습니다.");
         isListening = false;
-        // 사용자가 직접 꺼서 종료된 것이 아니라면 비동기적으로 다시 자동 재시작
-        if (!userManuallyStopped) {
+
+        // [수정] 사용자가 직접 끈 경우, isRestarting 플래그를 확실히 false로 만들어줍니다.
+        if (userManuallyStopped) {
+            isRestarting = false; 
+        } else {
+            // 자동 재시작 로직
+            isRestarting = true; 
             console.log("STT 세션이 만료되어 재시작합니다.");
             try {
-                // 너무 연속적인 재시작 시 발생하는 소음 방지를 위해 250ms의 여유를 둠
-                setTimeout(() => recognition.start(), 250);
+                setTimeout(() => {
+                    // 이 시점에 사용자가 끄기 버튼을 눌렀을 수 있으므로 한번 더 체크
+                    if (userManuallyStopped) {
+                        isRestarting = false;
+                        updateVoiceButtonUI();
+                        return;
+                    }
+                    recognition.start();
+                    isRestarting = false;
+                }, 250);
             } catch (e) {
                 console.error("STT 재시작 실패:", e);
+                isRestarting = false;
             }
         }
         updateVoiceButtonUI();
@@ -131,18 +148,35 @@ if (!SpeechRecognition) {
 // 4. UI 및 외부 제어 함수
 function toggleVoiceCommand() {
     if (!recognition) return;
-    if (isListening) {
+    if (isRestarting) {
+        console.warn("STT가 재시작 중입니다. 잠시 후 다시 시도해주세요.");
+        return;
+    }
+
+    // [수정] isListening과 userManuallyStopped의 상태를 동시에 확인하여 명령을 결정
+    const isActuallyListening = isListening && !userManuallyStopped;
+
+    if (isActuallyListening) {
+        // 켜져 있는 상태에서 끄려고 할 때
         userManuallyStopped = true;
         recognition.stop();
     } else {
+        // 꺼져 있는 상태에서 켜려고 할 때 (또는 onend 직후 재시작을 기다리는 상태일 때)
+        // recognition.stop()이 호출되면 onend 이벤트에서 userManuallyStopped를 다시 false로 처리해주므로
+        // 여기서는 플래그만 설정하고 start()를 호출합니다.
         userManuallyStopped = false;
         try {
             recognition.start();
         } catch(e) {
+            // 이미 켜져 있는데 켜려고 시도해서 나는 오류는 여기서 잡힙니다.
             console.error("음성 인식을 시작할 수 없습니다:", e);
+            // 혹시 모를 상태 꼬임 방지를 위해 UI를 한번 더 업데이트합니다.
+            updateVoiceButtonUI();
         }
     }
-    updateVoiceButtonUI();
+    // [제거] 불필요한 UI 업데이트 호출을 제거합니다.
+    // onstart, onend 이벤트 핸들러가 정확한 시점에 UI를 업데이트하므로 이 호출은 상태 꼬임의 원인이 됩니다.
+    // updateVoiceButtonUI(); 
 }
 
 // TTS 재생 시 음성 인식 결과 처리를 잠시 무시하는 모드
