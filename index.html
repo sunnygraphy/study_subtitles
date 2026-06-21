@@ -523,6 +523,35 @@
         
         let currentFileKey = null;
 
+        // [추가] 모바일 브라우저에서 마이크가 계속 꺼지는 것을 방지하기 위한 마이크 스트림 유지 로직
+        let mediaStream = null;
+        async function keepMicrophoneActive() {
+            try {
+                // getUserMedia를 호출하여 마이크 사용 권한을 받고 스트림을 유지합니다.
+                // 이 스트림을 실제로 사용하지는 않지만, 연결을 유지하는 것만으로도
+                // 브라우저가 SpeechRecognition 세션을 강제로 종료하는 것을 방지하는 데 도움이 됩니다.
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log("🎤 마이크 스트림을 성공적으로 활성화했습니다. (세션 유지용)");
+
+                // 스트림을 받았지만 실제로 사용하지 않으므로 트랙을 비활성화하여 리소스 사용을 최소화합니다.
+                mediaStream.getTracks().forEach(track => track.enabled = false);
+
+            } catch (err) {
+                console.error("마이크 스트림 활성화 실패:", err);
+                // 사용자가 권한을 거부한 경우, 음성 명령 버튼을 비활성화 할 수 있습니다.
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    const voiceBtn = document.getElementById('voiceCommandBtn');
+                    if(voiceBtn) voiceBtn.disabled = true;
+                    alert("음성 명령을 사용하려면 마이크 권한이 필요합니다.");
+                }
+            }
+        }
+
+        // 페이지 로드 시 또는 첫 사용자 인터랙션 시 마이크 스트림을 활성화할 수 있습니다.
+        // 여기서는 페이지가 준비되면 바로 시도하도록 합니다.
+        window.addEventListener('load', keepMicrophoneActive);
+
+
         // 모달창 이벤트 처리
         helpBtn.addEventListener('click', () => { helpModal.style.display = 'flex'; });
         modalCloseBtn.addEventListener('click', () => { helpModal.style.display = 'none'; });

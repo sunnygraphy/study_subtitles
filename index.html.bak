@@ -939,18 +939,21 @@
                             
                             // stt.js의 발음 인식 모드 진입 함수 호출
                             if (typeof startPracticeMode === 'function') {
-                                startPracticeMode();
+                                // [수정] TTS 종료 후 0.5초 지연을 주어 에코를 방지하고 STT를 시작합니다.
+                                setTimeout(() => {
+                                    startPracticeMode();
                                 
-                                // ✨ 7초 후에도 발음 연습 입력이 없으면 자동으로 일반 모드로 전환
-                                if (practiceTimeoutId) clearTimeout(practiceTimeoutId); // 이전 타이머 정리
-                                practiceTimeoutId = setTimeout(() => {
-                                    console.log("⏰ 발음 연습 시간 초과. 일반 명령 모드로 전환합니다.");
-                                    pronunciationScoreDisplay.innerHTML = '';
-                                    // stt.js의 resume 함수를 호출하여 isPracticeMode를 false로 만듦
-                                    if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
-                                    practiceTimeoutId = null;
-                                }, 10000); // 7초 대기
-
+                                    // ✨ 10초 후에도 발음 연습 입력이 없으면 자동으로 일반 모드로 전환
+                                    // (타임아웃 로직을 setTimeout 콜백 안으로 이동)
+                                    if (practiceTimeoutId) clearTimeout(practiceTimeoutId); // 이전 타이머 정리
+                                    practiceTimeoutId = setTimeout(() => {
+                                        console.log("⏰ 발음 연습 시간 초과. 일반 명령 모드로 전환합니다.");
+                                        pronunciationScoreDisplay.innerHTML = '';
+                                        // stt.js의 resume 함수를 호출하여 isPracticeMode를 false로 만듦
+                                        if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
+                                        practiceTimeoutId = null;
+                                    }, 10000); // 10초 대기
+                                }, 500); // 0.5초 지연
                             } else {
                                 if (typeof resumeVoiceRecognition === 'function') resumeVoiceRecognition();
                             }
@@ -1123,3 +1126,5 @@
     <script src="stt.js"></script>
 </body>
 </html>
+
+
