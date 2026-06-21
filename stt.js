@@ -100,22 +100,17 @@ if (!SpeechRecognition) {
 
     // 3. 음성 인식 상태 관리
     recognition.onstart = () => {
-        const micStatus = document.getElementById('mic-status-display');
-        if (micStatus) micStatus.textContent = 'ON';
         isListening = true;
         console.log("음성 인식이 시작되었습니다. 명령을 기다립니다...");
         updateVoiceButtonUI();
     };
     
     recognition.onend = () => {
-        const micStatus = document.getElementById('mic-status-display');
-        if (micStatus) micStatus.textContent = 'OFF';
         isListening = false;
         console.log("음성 인식이 중단되었습니다.");
         
-        // 사용자가 명시적으로 끄지 않았다면(세션 자동 만료 등) 다시 켭니다.
-                // [수정] 사용자가 끄지 않았고, '소프트웨어 무시 모드'가 아닐 때만 자동 재시작
-        if (!userManuallyStopped && !isTemporarilyIgnoring) {
+        // 사용자가 명시적으로 끄지 않았고, TTS 재생 중이 아닐 때만 다시 켭니다.
+        if (!userManuallyStopped && !isTtsPlaying) {
             console.log("자동 재시작 시도...");
             try {
                 recognition.start();
@@ -127,8 +122,6 @@ if (!SpeechRecognition) {
     };
 
     recognition.onerror = (event) => {
-        const micStatus = document.getElementById('mic-status-display');
-        if (micStatus) micStatus.textContent = 'ERROR';
         isListening = false;
         if (event.error === 'aborted') {
             console.log("ℹ️ 마이크 일시 정지됨 (aborted - 에코 방지 로직 작동)");
@@ -171,32 +164,38 @@ function toggleVoiceCommand() {
 
 // TTS 재생 시 음성 인식 결과 처리를 잠시 무시하는 모드
 function stopVoiceRecognitionTemporarily() {
-    console.log("🤫 STT 무시 모드 시작 (마이크 유지, 소프트웨어 무시)");
+    console.log("🤫 STT 무시 모드 시작 (마이크 일시 정지)");
     isTemporarilyIgnoring = true;
     isTtsPlaying = true;
-    // 마이크를 강제로 끄지 않고 계속 켜둡니다.
+    if (recognition && isListening) {
+        try { recognition.abort(); } catch(e) {} // 모바일 에코 방지: TTS 소리가 녹음되는 것을 원천 차단
+    }
 }
 
 // TTS 재생 종료 후 음성 인식 결과 처리 재개 (연습 모드도 함께 완전히 초기화)
 function resumeVoiceRecognition() {
-    // 모바일 지연 에코 방지: TTS가 끝난 뒤 0.8초 동안은 계속 결과를 무시합니다.
-    setTimeout(() => {
-        console.log("🙂 STT 무시 모드 해제 (명령어 대기 시작)");
-        isTemporarilyIgnoring = false;
-        isPracticeMode = false; 
-        isTtsPlaying = false;
-    }, 800);
+    console.log("🙂 STT 무시 모드 해제 (명령어 대기 시작)");
+    isTemporarilyIgnoring = false;
+    isPracticeMode = false; 
+    isTtsPlaying = false;
+    if (recognition && !userManuallyStopped && !isListening) {
+        setTimeout(() => {
+            try { recognition.start(); } catch(e) {}
+        }, 300); // 남은 기계음이 녹음되지 않도록 지연 재시작
+    }
 }
 
 // ✨ [추가] 영어 TTS 출력 후 발음 연습을 들을 수 있도록 모드를 전환하는 함수
 function startPracticeMode() {
-    // 모바일 지연 에코 방지: 기계음 끝자락이 인식되는 것을 막기 위해 0.8초 대기
-    setTimeout(() => {
-        console.log("👂 발음 연습 인식 시작...");
-        isTemporarilyIgnoring = false; 
-        isPracticeMode = true; 
-        isTtsPlaying = false;
-    }, 800);
+    console.log("👂 발음 연습 인식 시작...");
+    isTemporarilyIgnoring = false; // STT가 들어야 하므로 무시 모드 해제
+    isPracticeMode = true; // 다음 음성 결과는 연습 분석으로 이동하도록 설정
+    isTtsPlaying = false;
+    if (recognition && !userManuallyStopped && !isListening) {
+        setTimeout(() => {
+            try { recognition.start(); } catch(e) {}
+        }, 300); // 지연 재시작으로 에코 방지
+    }
 }
 
 function updateVoiceButtonUI() {
