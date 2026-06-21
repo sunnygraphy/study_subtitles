@@ -110,13 +110,19 @@ if (!SpeechRecognition) {
         console.log("음성 인식이 중단되었습니다.");
         
         // 사용자가 명시적으로 끄지 않았고, TTS 재생 중이 아닐 때만 다시 켭니다.
+        // [수정] 모바일에서 'no-speech' 에러 등으로 짧게 재시작되며 '띡띡' 소리나는 것을 방지하기 위해 짧은 지연(delay) 후 재시작
         if (!userManuallyStopped && !isTtsPlaying) {
-            console.log("자동 재시작 시도...");
-            try {
-                recognition.start();
-            } catch(e) {
-                console.error("자동 재시작 중 오류 무시:", e);
-            }
+            setTimeout(() => {
+                // setTimeout 콜백 시점에도 사용자가 껐는지 다시 한번 체크
+                if (!userManuallyStopped && !isListening) {
+                    console.log("음성 인식 자동 재시작...");
+                    try {
+                        recognition.start();
+                    } catch(e) {
+                        console.error("자동 재시작 중 오류 무시:", e);
+                    }
+                }
+            }, 100); // 100ms 지연으로 충분
         }
         updateVoiceButtonUI();
     };
