@@ -1,27 +1,10 @@
 [
   {
-    "target_file": "index.html",
-    "patches": [
-      {
-        "old_code": "<h2>학습 모드 화면</h2>",
-        "new_code": "<h2>학습 모드 화면<span id=\"mic-status-display\" style=\"font-size: 0.9rem; font-weight: bold; margin-left: 10px; color: #dc3545;\"></span></h2>"
-      }
-    ]
-  },
-  {
     "target_file": "stt.js",
     "patches": [
       {
-        "old_code": "recognition.onstart = () => {",
-        "new_code": "recognition.onstart = () => {\n        const micStatus = document.getElementById('mic-status-display');\n        if (micStatus) micStatus.textContent = 'ON';"
-      },
-      {
-        "old_code": "recognition.onend = () => {",
-        "new_code": "recognition.onend = () => {\n        const micStatus = document.getElementById('mic-status-display');\n        if (micStatus) micStatus.textContent = 'OFF';"
-      },
-      {
-        "old_code": "recognition.onerror = (event) => {",
-        "new_code": "recognition.onerror = (event) => {\n        const micStatus = document.getElementById('mic-status-display');\n        if (micStatus) micStatus.textContent = 'ERROR';"
+        "old_code": "if (!userManuallyStopped) {",
+        "new_code": "        // [수정] 사용자가 끄지 않았고, '소프트웨어 무시 모드'가 아닐 때만 자동 재시작\n        if (!userManuallyStopped && !isTemporarilyIgnoring) {"
       }
     ]
   }

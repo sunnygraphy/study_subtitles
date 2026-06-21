@@ -114,7 +114,8 @@ if (!SpeechRecognition) {
         console.log("음성 인식이 중단되었습니다.");
         
         // 사용자가 명시적으로 끄지 않았다면(세션 자동 만료 등) 다시 켭니다.
-        if (!userManuallyStopped) {
+                // [수정] 사용자가 끄지 않았고, '소프트웨어 무시 모드'가 아닐 때만 자동 재시작
+        if (!userManuallyStopped && !isTemporarilyIgnoring) {
             console.log("자동 재시작 시도...");
             try {
                 recognition.start();
