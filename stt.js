@@ -3,10 +3,11 @@
 // 1. 음성 인식 API 초기화
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition;
+// [수정] 엣지 브라우저 안정화를 위한 상태 변수 정리
 let isListening = false;
-let userManuallyStopped = false; // 사용자가 직접 껐는지 확인하는 플래그
-let isTemporarilyIgnoring = false; // TTS 재생 중에 STT 결과를 무시하기 위한 플래그
-let isPracticeMode = false; // ✨ 발음 연습(따라 하기) 모드 플래그
+let userManuallyStopped = true; // 처음에는 무조건 꺼진 상태로 시작
+let isTemporarilyIgnoring = false;
+let isPracticeMode = false;
 
 if (!SpeechRecognition) {
     console.error("이 브라우저는 음성 인식을 지원하지 않습니다. 크롬 브라우저 사용을 권장합니다.");
@@ -104,16 +105,16 @@ if (!SpeechRecognition) {
     };
     
     recognition.onend = () => {
-        console.log("음성 인식이 중단되었습니다.");
         isListening = false;
-        // 사용자가 직접 꺼서 종료된 것이 아니라면 비동기적으로 다시 자동 재시작
+        console.log("음성 인식이 중단되었습니다.");
+        
+        // 사용자가 명시적으로 끄지 않았다면(세션 자동 만료 등) 다시 켭니다.
         if (!userManuallyStopped) {
-            console.log("STT 세션이 만료되어 재시작합니다.");
+            console.log("자동 재시작 시도...");
             try {
-                // 너무 연속적인 재시작 시 발생하는 소음 방지를 위해 250ms의 여유를 둠
-                setTimeout(() => recognition.start(), 250);
-            } catch (e) {
-                console.error("STT 재시작 실패:", e);
+                recognition.start();
+            } catch(e) {
+                console.error("자동 재시작 중 오류 무시:", e);
             }
         }
         updateVoiceButtonUI();
@@ -133,16 +134,24 @@ if (!SpeechRecognition) {
 // 4. UI 및 외부 제어 함수
 function toggleVoiceCommand() {
     if (!recognition) return;
-    if (isListening) {
-        userManuallyStopped = true;
-        recognition.stop();
-    } else {
+    
+    if (userManuallyStopped) {
+        // 꺼져있는 상태 -> 켭니다.
         userManuallyStopped = false;
         try {
             recognition.start();
         } catch(e) {
-            console.error("음성 인식을 시작할 수 없습니다:", e);
+            // 엣지에서 가끔 발생하는 찌꺼기 상태 강제 정리
+            console.log("강제 초기화 후 다시 시작");
+            recognition.abort(); // stop보다 강력한 강제 종료
+            setTimeout(() => { 
+                if(!userManuallyStopped) recognition.start(); 
+            }, 100);
         }
+    } else {
+        // 켜져있는 상태 -> 끕니다.
+        userManuallyStopped = true;
+        recognition.stop();
     }
     updateVoiceButtonUI();
 }
