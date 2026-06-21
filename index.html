@@ -909,6 +909,13 @@
             pronunciationScoreDisplay.innerHTML = '';
             pronunciationScoreDisplay.className = 'score-display';
 
+            // [수정] TTS와 마이크 스트림의 충돌을 막기 위해, TTS 시작 전에 마이크 세션을 임시로 중지합니다.
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+                console.log("🎤 TTS 재생을 위해 마이크 세션을 임시 중지했습니다.");
+            }
+
             if (typeof stopVoiceRecognitionTemporarily === 'function') {
                 stopVoiceRecognitionTemporarily();
             }
